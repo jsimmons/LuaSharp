@@ -1207,6 +1207,7 @@ namespace Lua
 			return ( L_LoadString( chunk ) == LuaEnum.Ok ) && ( PCall( 0, (int)LuaEnum.MultiRet, 0 ) == LuaEnum.Ok );
 		}
 
+		// Commented out as the mono c# compiler crashes with the L_Error __arglist usage. And the C# parser for MonoDevelop does not handle it properly either.
 		/*
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_error" )]
 		private static extern void L_error( IntPtr state, string format, __arglist );
