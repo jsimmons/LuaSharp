@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 9.00
 # Visual Studio 2005
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{132D2EB3-09A7-4189-A630-C3A6137EF210}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lua", "Lua\Lua.csproj", "{76D7F266-456D-4A7C-916E-E35D057E5F98}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LuaWrap", "LuaWrap\LuaWrap.csproj", "{76D7F266-456D-4A7C-916E-E35D057E5F98}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LuaSharp", "LuaSharp\LuaSharp.csproj", "{C651A291-775F-46D6-A2D8-BEF573F97D1E}"
 EndProject

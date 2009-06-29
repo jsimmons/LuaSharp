@@ -32,7 +32,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Lua
+namespace LuaWrap
 {	
 	/// <summary>
 	/// Enumeration of basic lua globals.
@@ -156,7 +156,7 @@ namespace Lua
 		
 		public Lua()
 		{
-			this.state = L_newState();
+			this.state = auxNewState();
 		}
 		
 		public Lua( IntPtr state )
@@ -1154,7 +1154,7 @@ namespace Lua
 		#region Auxiliary Library
 
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_callmeta" )]
-		private static extern bool L_callMeta( IntPtr state, int index, string key );
+		private static extern bool auxCallMeta( IntPtr state, int index, string key );
 		
 		/// <summary>
 		/// If the object at index obj has a metatable and this metatable has a field e, this function calls this field and passes the object as its only argument. In this case this function returns true and pushes onto the stack the value returned by the call. If there is no metatable or no metamethod, this function returns false (without pushing any value on the stack).
@@ -1168,9 +1168,9 @@ namespace Lua
 		/// <returns>
 		/// A <see cref="System.Boolean"/>
 		/// </returns>
-		public bool L_CallMeta( int index, string key )
+		public bool AuxCallMeta( int index, string key )
 		{
-			return L_callMeta( state, index, key );
+			return auxCallMeta( state, index, key );
 		}
 
 		/// <summary>
@@ -1185,9 +1185,9 @@ namespace Lua
 		/// <returns>
 		/// A <see cref="System.Boolean"/>
 		/// </returns>
-		public bool L_DoFile( string filename )
+		public bool AuxDoFile( string filename )
 		{
-			return ( L_LoadFile( filename ) == LuaEnum.Ok ) && ( PCall( 0, (int)LuaEnum.MultiRet, 0 ) == LuaEnum.Ok );
+			return ( AuxLoadFile( filename ) == LuaEnum.Ok ) && ( PCall( 0, (int)LuaEnum.MultiRet, 0 ) == LuaEnum.Ok );
 		}
 
 		/// <summary>
@@ -1202,15 +1202,15 @@ namespace Lua
 		/// <returns>
 		/// A <see cref="System.Boolean"/>
 		/// </returns>
-		public bool L_DoString( string chunk )
+		public bool AuxDoString( string chunk )
 		{
-			return ( L_LoadString( chunk ) == LuaEnum.Ok ) && ( PCall( 0, (int)LuaEnum.MultiRet, 0 ) == LuaEnum.Ok );
+			return ( AuxLoadString( chunk ) == LuaEnum.Ok ) && ( PCall( 0, (int)LuaEnum.MultiRet, 0 ) == LuaEnum.Ok );
 		}
 
-		// Commented out as the mono c# compiler crashes with the L_Error __arglist usage. And the C# parser for MonoDevelop does not handle it properly either.
+		// Commented out as the mono c# compiler crashes with the AuxError __arglist usage. And the C# parser for MonoDevelop does not handle it properly either.
 		/*
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_error" )]
-		private static extern void L_error( IntPtr state, string format, __arglist );
+		private static extern void auxError( IntPtr state, string format, __arglist );
 		
 		/// <summary>
 		/// Raises an error. The error message format is given by fmt plus any extra arguments, following the same rules of lua_pushfstring. It also adds at the beginning of the message the file name and the line number where the error occurred, if this information is available. 
@@ -1221,14 +1221,14 @@ namespace Lua
 		/// <param name="__arglist">
 		/// A <see cref="__arglist"/>
 		/// </param>
-		public void L_Error( string format, __arglist )
+		public void AuxError( string format, __arglist )
 		{
-			L_error( state, format, __arglist );
+			auxError( state, format, __arglist );
 		}
 		*/
 		
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_getmetafield" )]
-		private static extern bool L_getMetafield( IntPtr state, int index, string key );
+		private static extern bool auxGetMetafield( IntPtr state, int index, string key );
 		
 		/// <summary>
 		/// Pushes onto the stack the field key from the metatable of the object at the given index. If the object does not have a metatable, or if the metatable does not have this field, returns false and pushes nothing.
@@ -1242,13 +1242,13 @@ namespace Lua
 		/// <returns>
 		/// A <see cref="System.Boolean"/>
 		/// </returns>
-		public bool L_GetMetafield( int index, string key )
+		public bool AuxGetMetafield( int index, string key )
 		{
-			return L_getMetafield( state, index, key );
+			return auxGetMetafield( state, index, key );
 		}
 
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_getmetatable" )]
-		private static extern void L_getMetatable( IntPtr state, string key );
+		private static extern void auxGetMetatable( IntPtr state, string key );
 		
 		/// <summary>
 		/// Pushes onto the stack the metatable associated with name tname in the registry (see luaL_newmetatable).
@@ -1256,13 +1256,13 @@ namespace Lua
 		/// <param name="key">
 		/// A <see cref="System.String"/>
 		/// </param>
-		public void L_GetMetatable( string key )
+		public void AuxGetMetatable( string key )
 		{
-			L_getMetatable( state, key );
+			auxGetMetatable( state, key );
 		}
 
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_loadbuffer" )]
-		private static extern LuaEnum L_loadBuffer( IntPtr state, string buffer, int size, string name );
+		private static extern LuaEnum auxLoadBuffer( IntPtr state, string buffer, int size, string name );
 		
 		/// <summary>
 		/// Loads a buffer as a Lua chunk. This function uses lua_load to load the chunk in the buffer pointed to by buff with size sz. name is the chunk name, used for debug and errors.
@@ -1279,13 +1279,13 @@ namespace Lua
 		/// <returns>
 		/// A <see cref="LuaEnum"/>
 		/// </returns>
-		public LuaEnum L_LoadBuffer( string buffer, int size, string name )
+		public LuaEnum AuxLoadBuffer( string buffer, int size, string name )
 		{
-			return L_loadBuffer( state, buffer, size, name );
+			return auxLoadBuffer( state, buffer, size, name );
 		}
 		
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_loadfile" )]
-		private static extern LuaEnum L_loadFile( IntPtr state, string filename );
+		private static extern LuaEnum AuxloadFile( IntPtr state, string filename );
 		
 		/// <summary>
 		/// Loads a file as a Lua chunk. This function uses lua_load to load the chunk in the file named filename. If filename is NULL, then it loads from the standard input. The first line in the file is ignored if it starts with a #. 
@@ -1296,13 +1296,13 @@ namespace Lua
 		/// <returns>
 		/// A <see cref="LuaEnum"/>
 		/// </returns>
-		public LuaEnum L_LoadFile( string filename )
+		public LuaEnum AuxLoadFile( string filename )
 		{
-			return L_loadFile( state, filename );
+			return AuxloadFile( state, filename );
 		}
 		
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_loadstring" )]
-		private static extern LuaEnum L_loadString( IntPtr state, string str );
+		private static extern LuaEnum auxLoadString( IntPtr state, string str );
 		
 		/// <summary>
 		/// Loads a string as a Lua chunk. This function uses lua_load to load the chunk within the zero-terminated string.
@@ -1313,13 +1313,13 @@ namespace Lua
 		/// <returns>
 		/// A <see cref="LuaEnum"/>
 		/// </returns>
-		public LuaEnum L_LoadString( string str )
+		public LuaEnum AuxLoadString( string str )
 		{
-			return L_loadString( state, str );
+			return auxLoadString( state, str );
 		}
 
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_newmetatable" )]
-		private static extern bool L_newMetatable( IntPtr state, string key );
+		private static extern bool auxNewMetatable( IntPtr state, string key );
 		
 		/// <summary>
 		/// If the registry already has the given key, returns false. Otherwise, creates a new table to be used as a metatable for userdata, adds it to the registry with the given key, and returns true.
@@ -1331,9 +1331,9 @@ namespace Lua
 		/// <returns>
 		/// A <see cref="System.Boolean"/>
 		/// </returns>
-		public bool L_NewMetatable( string key )
+		public bool AuxNewMetatable( string key )
 		{
-			return L_newMetatable( state, key );
+			return auxNewMetatable( state, key );
 		}
 		
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_newstate" )]
@@ -1343,21 +1343,21 @@ namespace Lua
 		/// <returns>
 		/// A Lua State.<see cref="IntPtr"/>
 		/// </returns>
-		private static extern IntPtr L_newState();
+		private static extern IntPtr auxNewState();
 		
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_openlibs" )]
-		private static extern void L_openLibs( IntPtr state );
+		private static extern void auxOpenLibs( IntPtr state );
 
 		/// <summary>
 		/// Opens all standard Lua libraries into the given state.
 		/// </summary>
-		public void L_OpenLibs()
+		public void AuxOpenLibs()
 		{
-			L_openLibs( state );
+			auxOpenLibs( state );
 		}
 		
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_ref" )]
-		private static extern int L_ref( IntPtr state, int t );
+		private static extern int auxRef( IntPtr state, int t );
 		
 		/// <summary>
 		/// Creates and returns a reference, in the table at index t, for the object at the top of the stack (and pops the object).
@@ -1370,9 +1370,9 @@ namespace Lua
 		/// <returns>
 		/// A <see cref="System.Int32"/>
 		/// </returns>
-		public int L_Ref( int t )
+		public int AuxRef( int t )
 		{
-			return L_ref( state, t );
+			return auxRef( state, t );
 		}
 
 		/// <summary>
@@ -1387,13 +1387,13 @@ namespace Lua
 		/// <param name="r">
 		/// A <see cref="System.Int32"/>
 		/// </param>
-		public void L_GetRef( int t, int r )
+		public void AuxGetRef( int t, int r )
 		{
 			RawGetI( t, r ); 
 		}
 		
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_unref" )]
-		private static extern void L_unref( IntPtr state, int t, int r );
+		private static extern void auxUnRef( IntPtr state, int t, int r );
 		
 		/// <summary>
 		/// Releases reference ref from the table at index t (see luaL_ef). The entry is removed from the table, so that the referred object can be collected. The reference ref is also freed to be used again. 
@@ -1404,13 +1404,13 @@ namespace Lua
 		/// <param name="r">
 		/// A <see cref="System.Int32"/>
 		/// </param>
-		public void L_Unref( int t, int r )
+		public void AuxUnRef( int t, int r )
 		{
-			L_unref( state, t, r );
+			auxUnRef( state, t, r );
 		}
 		
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_typename" )]
-		private static extern string L_typeName( IntPtr state, int index );
+		private static extern string auxTypeName( IntPtr state, int index );
 		
 		/// <summary>
 		/// Returns the name of the type of the value at the given index.
@@ -1421,13 +1421,13 @@ namespace Lua
 		/// <returns>
 		/// A <see cref="System.String"/>
 		/// </returns>
-		public string L_TypeName( int index )
+		public string AuxTypeName( int index )
 		{
-			return L_typeName( state, index );
+			return auxTypeName( state, index );
 		}
 
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_typeerror" )]
-		private static extern void L_typeError( IntPtr state, int narg, string expected );
+		private static extern void auxTypeError( IntPtr state, int narg, string expected );
 		
 		/// <summary>
 		/// Generates an error with a message like the following:
@@ -1440,13 +1440,13 @@ namespace Lua
 		/// <param name="expected">
 		/// A <see cref="System.String"/>
 		/// </param>
-		public void L_TypeError( int narg, string expected )
+		public void AuxTypeError( int narg, string expected )
 		{
-			L_typeError( state, narg, expected );
+			auxTypeError( state, narg, expected );
 		}
 
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_where" )]
-		private static extern void L_where( IntPtr state, int level );
+		private static extern void auxWhere( IntPtr state, int level );
 		
 		/// <summary>
 		/// Pushes onto the stack a string identifying the current position of the control at level lvl in the call stack. Typically this string has the following format:
@@ -1455,9 +1455,9 @@ namespace Lua
 		/// <param name="level">
 		/// A <see cref="System.Int32"/>
 		/// </param>
-		public void L_Where( int level )
+		public void AuxWhere( int level )
 		{
-			L_where( state, level );
+			auxWhere( state, level );
 		}
 		
 		#endregion

@@ -30,6 +30,7 @@
 /// </summary>
 
 using System;
+using LuaWrap;
 
 namespace Test
 {
@@ -37,7 +38,11 @@ namespace Test
 	{
 		public static void Main(string[] args)
 		{
-			Console.WriteLine("Hello World!");
+			Lua l = new Lua();
+			
+			l.AuxOpenLibs();
+			
+			l.AuxDoString( "print( \"Niggers LolE\" )" );
 		}
 	}
 }
