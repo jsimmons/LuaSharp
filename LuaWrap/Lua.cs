@@ -166,7 +166,7 @@ namespace LuaWrap
 		
 		~Lua()
 		{
-			Close();
+			//Close();
 		}
 		
 		#region Core Library

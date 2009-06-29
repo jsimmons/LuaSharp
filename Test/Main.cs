@@ -30,19 +30,28 @@
 /// </summary>
 
 using System;
-using LuaWrap;
+using LuaSharp;
 
 namespace Test
 {
 	class MainClass
-	{
+	{		
 		public static void Main(string[] args)
 		{
-			Lua l = new Lua();
-			
-			l.AuxOpenLibs();
-			
-			l.AuxDoString( "print( \"Niggers LolE\" )" );
-		}
+			try
+			{
+				LuaState s = new LuaState();
+				
+				// Create a table and set one of its members via dostring.
+				s.DoString( "aaa = {} aaa[9001] = 'A rather large number, would you say?'" );
+				
+				// Grab the value set from the global environment.
+				Console.WriteLine( s["aaa", 9001] );
+			}
+			catch( LuaException e )
+			{
+				Console.WriteLine( "LolFail: " + e.Message + "\n\n" + e.StackTrace );
+			}
+		}			
 	}
 }
