@@ -74,6 +74,10 @@ namespace LuaSharp
 			{
 				state.PushCFunction( (CallbackFunction)o );
 			}
+			else if( t == typeof( LuaFunction ) )
+			{
+				state.AuxGetRef( (int)PseudoIndice.Registry, (o as LuaFunction).reference );
+			}
 			else
 			{
 				throw new NotImplementedException( "Passing of exotic datatypes is not yet handled" );
@@ -119,10 +123,12 @@ namespace LuaSharp
 				
 				case LuaType.Function:
 				{
-					throw new NotImplementedException( "Grabbing of exotic datatypes is not yet handled" );
-					//state.PushValue( index );
-					//int reference = state.AuxRef( (int)PseudoIndice.Registry );
-					//return new LuaFunction( reference, interpreter );
+					// If we're not grabbing the function from the top of the stack we want to copy it to the top of the stack.
+					if( index != -1 )
+						state.PushValue( index );
+				
+					int reference = state.AuxRef( (int)PseudoIndice.Registry );
+					return new LuaFunction( state, reference );
 				}
 				
 				case LuaType.Nil:

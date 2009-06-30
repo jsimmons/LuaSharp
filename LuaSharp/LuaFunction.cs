@@ -25,6 +25,8 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Generic;
+
 using LuaWrap;
 
 namespace LuaSharp
@@ -37,15 +39,46 @@ namespace LuaSharp
 		public LuaFunction( Lua state, int reference )
 		{
 			this.state = state;
-			this.reference = reference;
+			this.reference = reference;		
 		}
 		
 		~LuaFunction()
 		{
-			// This assumes this class is the sole owner of this reference.
 			state.AuxUnRef( (int)PseudoIndice.Registry, reference );
 		}
 		
-		
+		public object[] Call( params object[] args )
+		{
+			int oldTop = state.GetTop();
+			
+			if( !state.CheckStack( args.Length + 1 ) )
+			{
+				// Doing lua error manually as Mono does not like luaL_error currently.
+				Helpers.Push( state, "Stack overflow calling function: " );				
+				state.AuxWhere( 1 ); // TODO: not sure if this is working.
+				state.Concat( 2 );
+				state.Error();
+			}
+			
+			Helpers.Push( state, this );
+			
+			foreach( object o in args )
+			{
+				Helpers.Push( state, o );
+			}
+						
+			state.Call( args.Length, (int)LuaEnum.MultiRet );
+			
+			int returned = state.GetTop() - oldTop;
+			object[] returnedValues = new object[returned];
+			for( int i = 0; i < returned; i++ )
+			{
+				returnedValues[i] = Helpers.Pop( state );
+			}
+			
+			state.SetTop( oldTop );
+			
+			return returnedValues;
+		}
 	}
 }

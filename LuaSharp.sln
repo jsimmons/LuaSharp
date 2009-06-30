@@ -29,5 +29,18 @@ Global
 	GlobalSection(MonoDevelopProperties) = preSolution
 		version = 0.1
 		StartupItem = Test\Test.csproj
+		Policies = $0
+		$0.StandardHeader = $1
+		$1.inheritsSet = MITX11License
+		$0.DotNetNamingPolicy = $2
+		$2.DirectoryNamespaceAssociation = None
+		$2.ResourceNamePolicy = FileFormatDefault
+		$0.TextStylePolicy = $3
+		$3.FileWidth = 120
+		$3.TabWidth = 4
+		$3.TabsToSpaces = False
+		$3.NoTabsAfterNonTabs = False
+		$3.RemoveTrailingWhitespace = True
+		$3.EolMarker = Native
 	EndGlobalSection
 EndGlobal

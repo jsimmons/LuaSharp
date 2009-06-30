@@ -229,6 +229,20 @@ namespace LuaWrap
 		{
 			close( state );
 		}
+		
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_concat" )]
+		private static extern void concat( IntPtr state, int n );
+		
+		/// <summary>
+		/// Concatenates the n values at the top of the stack, pops them, and leaves the result at the top. If n is 1, the result is the single value on the stack (that is, the function does nothing); if n is 0, the result is the empty string. Concatenation is performed following the usual semantics of Lua
+		/// </summary>
+		/// <param name="n">
+		/// A <see cref="System.Int32"/>
+		/// </param>
+		public void Concat( int n )
+		{
+			concat( state, n );
+		}
 
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_createtable" )]
 		private static extern void createTable( IntPtr state, int narr, int nrec );
@@ -279,22 +293,6 @@ namespace LuaWrap
 		}
 
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_gc" )]
-		/// <summary>
-		/// Controls the garbage collector. 
-		/// This function performs several tasks, according to the value of the parameter what:
-		/// </summary>
-		/// <param name="state">
-		/// A Lua State. <see cref="IntPtr"/>
-		/// </param>
-		/// <param name="what">
-		/// Collector option. <see cref="GCOption"/>
-		/// </param>
-		/// <param name="data">
-		/// Value to change. A <see cref="System.Int32"/>
-		/// </param>
-		/// <returns>
-		/// A <see cref="System.Int32"/>
-		/// </returns>
 		private static extern int gc( IntPtr state, GCOption what, int data );
 		
 		/// <summary>
@@ -1396,7 +1394,7 @@ namespace LuaWrap
 		private static extern void auxUnRef( IntPtr state, int t, int r );
 		
 		/// <summary>
-		/// Releases reference ref from the table at index t (see luaL_ef). The entry is removed from the table, so that the referred object can be collected. The reference ref is also freed to be used again. 
+		/// Releases reference ref from the table at index t (see luaL_ref). The entry is removed from the table, so that the referred object can be collected. The reference ref is also freed to be used again. 
 		/// </summary>
 		/// <param name="t">
 		/// A <see cref="System.Int32"/>

@@ -43,10 +43,16 @@ namespace Test
 				LuaState s = new LuaState();
 				
 				// Create a table and set one of its members via dostring.
-				s.DoString( "aaa = {} aaa[9001] = 'A rather large number, would you say?'" );
+				//s.DoString( "func = function( a, b, c ) print( a, b, c ) return \"aaa\", \"bbb\" end" );
+				
+				LuaFunction f1 = s["print"] as LuaFunction;
+				LuaFunction f2 = s["print"] as LuaFunction;
 				
 				// Grab the value set from the global environment.
-				Console.WriteLine( s["aaa", 9001] );
+				//foreach( object str in f1.Call( "uno", "two", 99, 9001, "fasf", f1 ) )
+				//{
+				//	Console.WriteLine( str );
+				//}
 			}
 			catch( LuaException e )
 			{
