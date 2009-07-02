@@ -30,6 +30,7 @@
 /// </summary>
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 namespace LuaWrap
@@ -154,19 +155,34 @@ namespace LuaWrap
 		private const string Lib = "lua5.1.dll";
 		private IntPtr state;
 		
+		// Reference counting goodness.
+		private static Dictionary<IntPtr, Lua> states;
+		
+		static Lua()
+		{
+			states = new Dictionary<IntPtr, Lua>();
+		}
+		
 		public Lua()
 		{
 			this.state = auxNewState();
-		}
-		
-		public Lua( IntPtr state )
-		{
-			this.state = state;
+			states[state] = this;
 		}
 		
 		~Lua()
 		{
-			//Close();
+			Console.WriteLine( "Destroying state {0}", state.ToString() );
+			close( state );
+		}
+		
+		public static Lua GetInstance( IntPtr state )
+		{
+			if( states.ContainsKey( state ) )
+			{
+				return states[state];
+			}
+			
+			throw new ArgumentException( "No wrapper instance exists for state " + state.ToString() );
 		}
 		
 		#region Core Library
@@ -221,14 +237,6 @@ namespace LuaWrap
 
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_close" )]
 		private static extern void close( IntPtr state );
-		
-		/// <summary>
-		/// Destroys all objects in the given Lua state (calling the corresponding garbage-collection metamethods, if any) and frees all dynamic memory used by this state.
-		/// </summary>
-		public void Close()
-		{
-			close( state );
-		}
 		
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_concat" )]
 		private static extern void concat( IntPtr state, int n );

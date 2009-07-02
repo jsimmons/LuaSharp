@@ -1,6 +1,6 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 9.00
-# Visual Studio 2005
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{132D2EB3-09A7-4189-A630-C3A6137EF210}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LuaWrap", "LuaWrap\LuaWrap.csproj", "{76D7F266-456D-4A7C-916E-E35D057E5F98}"
@@ -38,9 +38,8 @@ Global
 		$0.TextStylePolicy = $3
 		$3.FileWidth = 120
 		$3.TabWidth = 4
-		$3.TabsToSpaces = False
-		$3.NoTabsAfterNonTabs = False
 		$3.RemoveTrailingWhitespace = True
-		$3.EolMarker = Native
+		$3.inheritsSet = Mono
+		$3.inheritsScope = text/plain
 	EndGlobalSection
 EndGlobal

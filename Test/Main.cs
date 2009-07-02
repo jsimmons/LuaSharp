@@ -39,24 +39,23 @@ namespace Test
 		public static void Main(string[] args)
 		{
 			try
-			{
-				LuaState s = new LuaState();
+			{				
+				LuaState state = new LuaState();
+
+				state.DoFile( "test.lua" );
 				
-				// Create a table and set one of its members via dostring.
-				//s.DoString( "func = function( a, b, c ) print( a, b, c ) return \"aaa\", \"bbb\" end" );
+				LuaFunction f1 = state["StupidFunction"] as LuaFunction;
 				
-				LuaFunction f1 = s["print"] as LuaFunction;
-				LuaFunction f2 = s["print"] as LuaFunction;
+//				{
+//					LuaFunction f2 = state["StupidFunction"] as LuaFunction;
+//					f2.Call( "You", "are ", 9999999 );
+//				}
 				
-				// Grab the value set from the global environment.
-				//foreach( object str in f1.Call( "uno", "two", 99, 9001, "fasf", f1 ) )
-				//{
-				//	Console.WriteLine( str );
-				//}
+				f1.Call();				
 			}
 			catch( LuaException e )
 			{
-				Console.WriteLine( "LolFail: " + e.Message + "\n\n" + e.StackTrace );
+				Console.WriteLine( "Fail: " + e.Message );
 			}
 		}			
 	}

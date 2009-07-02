@@ -51,14 +51,16 @@ namespace LuaSharp
 		
 		public static void Push( Lua state, object o )
 		{
-			Type t = o.GetType();
-			
 			// nil == null
 			if( o == null )
 			{
 				state.PushNil();
+				return;
 			}
-			else if( numberTypes.Contains( t ) )
+			
+			Type t = o.GetType();
+			
+			if( numberTypes.Contains( t ) )
 			{
 				state.PushNumber( Convert.ToDouble( o ) );
 			}
@@ -155,24 +157,12 @@ namespace LuaSharp
 		/// A <see cref="System.Object[]"/>
 		/// </param>		
 		public static void Traverse( Lua state, params object[] fragments )
-		{
-			// TODO: Give this a more meaningful value?
-			state.CheckStack( fragments.Length );
-			
-			Push( state, fragments[0] );
-			state.GetTable( (int)PseudoIndice.Globals );
-			
-			if( fragments.Length == 1 )
-			{					
-				return;
-			}
-			else
+		{			
+			for( int i = 1; i < fragments.Length; i++ )
 			{
-				for( int i = 1; i < fragments.Length; i++ )
-				{
-					Push( state, fragments[i] );
-					state.GetTable( -2 );
-				}
+				Push( state, fragments[i] );
+				state.GetTable( -2 );
+				state.Remove( -2 );
 			}
 		}
 	}

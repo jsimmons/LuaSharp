@@ -44,6 +44,7 @@ namespace LuaSharp
 		
 		~LuaFunction()
 		{
+			Console.WriteLine( "Destroying function referenced by {0} on state {1}", reference, state.ToString() );
 			state.AuxUnRef( (int)PseudoIndice.Registry, reference );
 		}
 		
@@ -60,15 +61,19 @@ namespace LuaSharp
 				state.Error();
 			}
 			
+			// Push the function.
 			Helpers.Push( state, this );
 			
+			// Push the args
 			foreach( object o in args )
 			{
 				Helpers.Push( state, o );
 			}
 						
+			// Call the function.
 			state.Call( args.Length, (int)LuaEnum.MultiRet );
 			
+			// Number of results is the new stack top - starting height of the stack.
 			int returned = state.GetTop() - oldTop;
 			object[] returnedValues = new object[returned];
 			for( int i = 0; i < returned; i++ )
@@ -76,8 +81,9 @@ namespace LuaSharp
 				returnedValues[i] = Helpers.Pop( state );
 			}
 			
+			// Return state to former glory incase something went amiss.
 			state.SetTop( oldTop );
-			
+						
 			return returnedValues;
 		}
 	}
