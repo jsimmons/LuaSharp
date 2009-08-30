@@ -44,12 +44,7 @@ namespace Test
 
 				state.DoFile( "test.lua" );
 				
-				LuaFunction f1 = state["StupidFunction"] as LuaFunction;
-				
-//				{
-//					LuaFunction f2 = state["StupidFunction"] as LuaFunction;
-//					f2.Call( "You", "are ", 9999999 );
-//				}
+				LuaFunction f1 = state["AFunction"] as LuaFunction;
 				
 				f1.Call();				
 			}

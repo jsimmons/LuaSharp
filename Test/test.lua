@@ -1,5 +1,6 @@
 SillyTable = {}
-SillyTable.dongs = "LOLE"
+SillyTable.aaa = "bbb"
 
-function StupidFunction()
+function AFunction()
+	print( "hello" )
 end
