@@ -26,6 +26,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 using LuaWrap;
 
@@ -49,12 +50,12 @@ namespace LuaSharp
 		};
 		#endregion
 		
-		public static void Push( Lua state, object o )
+		public static void Push( HandleRef state, object o )
 		{
 			// nil == null
 			if( o == null )
 			{
-				state.PushNil();
+				LuaLib.lua_pushnil( state );
 				return;
 			}
 			
@@ -62,23 +63,23 @@ namespace LuaSharp
 			
 			if( numberTypes.Contains( t ) )
 			{
-				state.PushNumber( Convert.ToDouble( o ) );
+				LuaLib.lua_pushnumber( state, Convert.ToDouble( o ) );
 			}
 			else if( t == typeof( char ) || t == typeof( string ) )
 			{
-				state.PushString( o.ToString() );
+				LuaLib.lua_pushstring( state, o.ToString() );
 			}
 			else if( t == typeof( bool ) )
 			{
-				state.PushBoolean( (bool)o );
+				LuaLib.lua_pushboolean( state, (bool)o );
 			}
 			else if( t == typeof( CallbackFunction ) )
 			{
-				state.PushCFunction( (CallbackFunction)o );
+				LuaLib.lua_pushcfunction( state, o as CallbackFunction );
 			}
 			else if( t == typeof( LuaFunction ) )
 			{
-				state.AuxGetRef( (int)PseudoIndice.Registry, (o as LuaFunction).reference );
+				LuaLib.luaL_getref( state, (int)PseudoIndice.Registry, (o as LuaFunction).reference );
 			}
 			else
 			{
@@ -86,33 +87,33 @@ namespace LuaSharp
 			}			
 		}
 		
-		public static object Pop( Lua state )
+		public static object Pop( HandleRef state )
 		{
 			object o = GetObject( state, -1 );
-			state.Pop( 1 );
+			LuaLib.lua_pop( state, 1 );
 			return o;
 		}
 		
-		public static object GetObject( Lua state, int index )
+		public static object GetObject( HandleRef state, int index )
 		{
-			LuaType type = state.Type( index );
+			LuaType type = LuaLib.lua_type( state, index );
 			
 			// TODO: Implement tables and other data structures.
 			switch( type )
 			{
 				case LuaType.Number:
 				{
-					return state.ToNumber( index );
+					return LuaLib.lua_tonumber( state, index );
 				}
 				
 				case LuaType.String:
 				{
-					return state.ToString( index );
+					return LuaLib.lua_tostring( state, index );
 				}
 				
 				case LuaType.Boolean:
 				{
-					return state.ToBoolean( index );
+					return LuaLib.lua_toboolean( state, index );
 				}
 				
 				case LuaType.Table:
@@ -127,9 +128,9 @@ namespace LuaSharp
 				{
 					// If we're not grabbing the function from the top of the stack we want to copy it to the top of the stack.
 					if( index != -1 )
-						state.PushValue( index );
+						LuaLib.lua_pushvalue( state, index );
 				
-					int reference = state.AuxRef( (int)PseudoIndice.Registry );
+					int reference = LuaLib.luaL_ref( state, (int)PseudoIndice.Registry );
 					return new LuaFunction( state, reference );
 				}
 				
@@ -156,13 +157,13 @@ namespace LuaSharp
 		/// <param name="fragments">
 		/// A <see cref="System.Object[]"/>
 		/// </param>		
-		public static void Traverse( Lua state, params object[] fragments )
+		public static void Traverse( HandleRef state, params object[] fragments )
 		{			
 			for( int i = 1; i < fragments.Length; i++ )
 			{
 				Push( state, fragments[i] );
-				state.GetTable( -2 );
-				state.Remove( -2 );
+				LuaLib.lua_gettable( state, -2 );
+				LuaLib.lua_remove( state, -2 );
 			}
 		}
 	}

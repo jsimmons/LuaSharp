@@ -26,6 +26,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 using LuaWrap;
 
@@ -33,10 +34,10 @@ namespace LuaSharp
 {
 	public class LuaFunction
 	{
-		private Lua state;
+		private HandleRef state;
 		internal int reference;
 		
-		public LuaFunction( Lua state, int reference )
+		public LuaFunction( HandleRef state, int reference )
 		{
 			this.state = state;
 			this.reference = reference;		
@@ -44,21 +45,21 @@ namespace LuaSharp
 		
 		~LuaFunction()
 		{
-			Console.WriteLine( "Destroying function referenced by {0} on state {1}", reference, state.ToString() );
-			state.AuxUnRef( (int)PseudoIndice.Registry, reference );
+			//Console.WriteLine( "Destroying function referenced by {0} on state {1}", reference, state.ToString() );
+			//state.AuxUnRef( (int)PseudoIndice.Registry, reference );
 		}
 		
 		public object[] Call( params object[] args )
 		{
-			int oldTop = state.GetTop();
-			
-			if( !state.CheckStack( args.Length + 1 ) )
+			int oldTop = LuaLib.lua_gettop( state );
+						
+			if( !LuaLib.lua_checkstack( state, args.Length + 1 ) )
 			{
 				// Doing lua error manually as Mono does not like luaL_error currently.
-				Helpers.Push( state, "Stack overflow calling function: " );				
-				state.AuxWhere( 1 ); // TODO: not sure if this is working.
-				state.Concat( 2 );
-				state.Error();
+				Helpers.Push( state, "Stack overflow calling function: " );
+				LuaLib.luaL_where( state, 1 ); // TODO: not sure if this is working.
+				LuaLib.lua_concat( state, 2 );
+				LuaLib.lua_error( state );
 			}
 			
 			// Push the function.
@@ -69,12 +70,11 @@ namespace LuaSharp
 			{
 				Helpers.Push( state, o );
 			}
-						
-			// Call the function.
-			state.Call( args.Length, (int)LuaEnum.MultiRet );
+
+			LuaLib.lua_call( state, args.Length, (int)LuaEnum.MultiRet );
 			
 			// Number of results is the new stack top - starting height of the stack.
-			int returned = state.GetTop() - oldTop;
+			int returned = LuaLib.lua_gettop( state ) - oldTop;
 			object[] returnedValues = new object[returned];
 			for( int i = 0; i < returned; i++ )
 			{
@@ -82,8 +82,8 @@ namespace LuaSharp
 			}
 			
 			// Return state to former glory incase something went amiss.
-			state.SetTop( oldTop );
-						
+			LuaLib.lua_settop( state, oldTop );
+			
 			return returnedValues;
 		}
 	}

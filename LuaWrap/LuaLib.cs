@@ -1,5 +1,5 @@
 // 
-// Lua.cs
+// LuaDLL.cs
 //  
 // Author:
 //       Joshua Simmons <simmons.44@gmail.com>
@@ -23,18 +23,12 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-
-/// <summary>
-/// This class will form the basic P/Invoke API wrapper in order for applications to interface with Lua.
-/// This can be used as a seperate project, or its functionality can be used via the higher level abstraction provided by the LuaSharp class.
-/// </summary>
-
+ 
 using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
-
+ 
 namespace LuaWrap
-{	
+{
 	/// <summary>
 	/// Enumeration of basic lua globals.
 	/// </summary>
@@ -44,43 +38,43 @@ namespace LuaWrap
 		/// Option for multiple returns in `lua_pcall' and `lua_call'
 		/// </summary>
 		MultiRet		=	-1,
-
+ 
 		/// <summary>
 		/// Everything is OK.
 		/// </summary>
 		Ok				=	0,
-		
+ 
 		/// <summary>
 		/// Thread status, Ok or Yield
 		/// </summary>
 		Yield			=	1,
-
+ 
 		/// <summary>
 		/// A Runtime error.
 		/// </summary>
 		ErrorRun		=	2,
-
+ 
 		/// <summary>
 		/// A syntax error.
 		/// </summary>
 		ErrorSyntax		=	3,
-
+ 
 		/// <summary>
 		/// A memory allocation error. For such errors, Lua does not call the error handler function. 
 		/// </summary>
 		ErrorMemory		=	4,
-
+ 
 		/// <summary>
 		/// An error in the error handling function.
 		/// </summary>
 		ErrorError		=	5,
-
+ 
 		/// <summary>
 		/// An extra error for file load errors when using luaL_loadfile.
 		/// </summary>
 		ErrorFile		=	6,
 	}
-	
+ 
 	public enum LuaType : int
 	{
 		None 			= -1,
@@ -94,406 +88,349 @@ namespace LuaWrap
 		UserData 		= 7,
 		Thread 			= 8
 	}
-
+ 
 	public enum GCOption : int
 	{
 		/// <summary>
 		/// Stops the garbage collector.
 		/// </summary>
 		Stop 			= 0,
-
+ 
 		/// <summary>
 		/// Restarts the garbage collector.
 		/// </summary>
 		Restart 		= 1,
-
+ 
 		/// <summary>
 		/// Performs a full garbage-collection cycle. 
 		/// </summary>
 		Collect 		= 2,
-
+ 
 		/// <summary>
 		/// Returns the current amount of memory (in Kbytes) in use by Lua. 
 		/// </summary>
 		Count 			= 3,
-
+ 
 		/// <summary>
 		/// Returns the remainder of dividing the current amount of bytes of memory in use by Lua by 1024. 
 		/// </summary>
 		CountB 			= 4,
-
+ 
 		/// <summary>
 		/// Performs an incremental step of garbage collection. The step "size" is controlled by data (larger values mean more steps) in a non-specified way. If you want to control the step size you must experimentally tune the value of data. The function returns 1 if the step finished a garbage-collection cycle. 
 		/// </summary>
 		Step 			= 5,
-
+ 
 		/// <summary>
 		/// Sets data as the new value for the pause (Controls how long the collector waits before starting a new cycle) of the collector (see §2.10). The function returns the previous value of the pause.
 		/// </summary>
 		SetPause 		= 6,
-
+ 
 		/// <summary>
 		/// Sets data as the new value for the step multiplier of the collector (Controls the relative speed of the collector relative to memory allocation.). The function returns the previous value of the step multiplier. 
 		/// </summary>
 		SetStepMul 		= 7
 	}
-
+ 
 	public enum PseudoIndice : int
 	{
 		Registry 		= -10000,
 		Environment 	= -10001,
 		Globals 		= -10002
 	}
-
+ 
 	/// <summary>
 	/// A delegate for C# function callbacks passed to Lua.
 	/// </summary>
-	public delegate int CallbackFunction( IntPtr state );
-	
-	public class Lua
-	{	
+	public delegate int CallbackFunction( HandleRef state );
+ 
+	public static class LuaLib
+	{
 		private const string Lib = "lua5.1.dll";
-		private IntPtr state;
-		
-		// Reference counting goodness.
-		private static Dictionary<IntPtr, Lua> states;
-		
-		static Lua()
-		{
-			states = new Dictionary<IntPtr, Lua>();
-		}
-		
-		public Lua()
-		{
-			this.state = auxNewState();
-			states[state] = this;
-		}
-		
-		~Lua()
-		{
-			Console.WriteLine( "Destroying state {0}", state.ToString() );
-			close( state );
-		}
-		
-		public static Lua GetInstance( IntPtr state )
-		{
-			if( states.ContainsKey( state ) )
-			{
-				return states[state];
-			}
-			
-			throw new ArgumentException( "No wrapper instance exists for state " + state.ToString() );
-		}
-		
+ 
 		#region Core Library
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_atpanic" )]
-		private static extern void atPanic( IntPtr state, CallbackFunction cb );
-		
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// If an error happens outside any protected environment, Lua calls a panic function and then calls exit(EXIT_FAILURE), thus exiting the host application. Your panic function can avoid this exit by never returning (e.g., doing a long jump). The panic function can access the error message at the top of the stack.
 		/// </summary>
-		/// <param name="cb">
-		/// A <see cref="CallbackFunction"/>
+		/// <param name="state">
+		/// A Lua State. <see cref="HandleRef"/>
 		/// </param>
-		public void AtPanic( CallbackFunction cb )
-		{
-			atPanic( state, cb );
-		}
-		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_call" )]
-		private static extern void call( IntPtr state, int nargs, int nresults );
-		
+		/// <param name="cb">
+		/// A new panic function. <see cref="CallbackFunction"/>
+		/// </param>
+		public static extern void lua_atpanic( HandleRef state, CallbackFunction cb );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// To call a function you must use the following protocol: first, the function to be called is pushed onto the stack; then, the arguments to the function are pushed in direct order; that is, the first argument is pushed first. Finally you call lua_call.
 		/// </summary>
+		/// <param name="state">
+		/// A Lua State <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="nargs">
 		/// Number of arguments to pass to the function. A <see cref="System.Int32"/>
 		/// </param>
 		/// <param name="nresults">
-		/// Number of results expected, or LuaEnum.MultiRet for all results. A <see cref="System.Int32"/>
+		/// Number of results expected, or Globals.MultiRet for all results. A <see cref="System.Int32"/>
 		/// </param>
-		public void Call( int nargs, int nresults )
-		{
-			call( state, nargs, nresults );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_checkstack" )]
-		private static extern bool checkStack( IntPtr state, int extra );
-		
+		public static extern void lua_call( HandleRef state, int nargs, int nresults );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Ensures that there are at least extra free stack slots in the stack. It returns false if it cannot grow the stack to that size. This function never shrinks the stack; if the stack is already larger than the new size, it is left unchanged. 
 		/// </summary>
+		/// <param name="state">
+		/// A Lua State. <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="extra">
 		/// Extra slots to request. A <see cref="System.Int32"/>
 		/// </param>
 		/// <returns>
 		/// A <see cref="System.Boolean"/>
 		/// </returns>
-		public bool CheckStack( int extra )
-		{
-			return checkStack( state, extra );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_close" )]
-		private static extern void close( IntPtr state );
-		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_concat" )]
-		private static extern void concat( IntPtr state, int n );
-		
+		public static extern bool lua_checkstack( HandleRef state, int extra );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
-		/// Concatenates the n values at the top of the stack, pops them, and leaves the result at the top. If n is 1, the result is the single value on the stack (that is, the function does nothing); if n is 0, the result is the empty string. Concatenation is performed following the usual semantics of Lua
+		/// Destroys all objects in the given Lua state (calling the corresponding garbage-collection metamethods, if any) and frees all dynamic memory used by this state.
 		/// </summary>
+		/// <param name="state">
+		/// A Lua State to be destroyed. <see cref="HandleRef"/>
+		/// </param>
+		public static extern void lua_close( HandleRef state );
+		
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
+		/// <summary>
+		/// Concatenates the n values at the top of the stack, pops them, and leaves the result at the top. If n is 1, the result is the single value on the stack (that is, the function does nothing); if n is 0, the result is the empty string. Concatenation is performed following the usual semantics of Lua.
+		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="n">
 		/// A <see cref="System.Int32"/>
 		/// </param>
-		public void Concat( int n )
-		{
-			concat( state, n );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_createtable" )]
-		private static extern void createTable( IntPtr state, int narr, int nrec );
-		
+		public static extern void lua_concat( HandleRef state, int n );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Creates a new empty table and pushes it onto the stack. The new table has space pre-allocated for narr array elements and nrec non-array elements. This pre-allocation is useful when you know exactly how many elements the table will have. Otherwise you can use the function lua_newtable. 
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="narr">
 		/// Number of pre-allocated array elements. A <see cref="System.Int32"/>
 		/// </param>
 		/// <param name="nrec">
 		/// Number of pre-allocated non-array elements. A <see cref="System.Int32"/>
 		/// </param>
-		public void CreateTable( int narr, int nrec )
-		{
-			createTable( state, narr, nrec );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_equal" )]
-		private static extern bool equal( IntPtr state, int index1, int index2 );
-		
+		public static extern void lua_createtable( HandleRef state, int narr, int nrec );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
-		/// Returns true if the two values in acceptable indices index1 and index2 are equal, following the semantics of the Lua == operator ( that is, may call metamethods). Otherwise returns false. Also returns false if any of the indices are invalid.
+		/// Returns 1 if the two values in acceptable indices index1 and index2 are equal, following the semantics of the Lua == operator (that is, may call metamethods). Otherwise returns 0. Also returns 0 if any of the indices is non valid. 
 		/// </summary>
+		/// <param name="state">
+		/// A Lua State <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index1">
-		/// A <see cref="System.Int32"/>
+		/// First index to compare. A <see cref="System.Int32"/>
 		/// </param>
 		/// <param name="index2">
-		/// A <see cref="System.Int32"/>
+		/// Second index to compare. A <see cref="System.Int32"/>
 		/// </param>
 		/// <returns>
-		/// A <see cref="System.Boolean"/>
+		/// A result code integer <see cref="System.Int32"/>
 		/// </returns>
-		public bool Equal( int index1, int index2 )
-		{
-			return equal( state, index1, index2 );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_error" )]
-		private static extern void error( IntPtr state );
-		
+		public static extern int lua_equal( HandleRef state, int index1, int index2 );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Generates a Lua error. The error message (which can actually be a Lua value of any type) must be on the stack top. This function does a long jump, and therefore never returns. (see luaL_error). 
 		/// </summary>
-		public void Error()
-		{
-			error( state );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_gc" )]
-		private static extern int gc( IntPtr state, GCOption what, int data );
-		
+		/// <param name="state">
+		/// A Lua State<see cref="HandleRef"/>
+		/// </param>
+		public static extern void lua_error( HandleRef state );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Controls the garbage collector. 
-		/// This function performs several tasks, according to the value of the parameter what.
+		/// This function performs several tasks, according to the value of the parameter what:
 		/// </summary>
+		/// <param name="state">
+		/// A Lua State. <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="what">
-		/// Collector Option. A <see cref="GCOption"/>
+		/// Collector option. <see cref="GCOption"/>
 		/// </param>
 		/// <param name="data">
-		/// Data. A <see cref="System.Int32"/>
+		/// Value to change. A <see cref="System.Int32"/>
 		/// </param>
 		/// <returns>
-		/// Result. A <see cref="System.Int32"/>
+		/// A <see cref="System.Int32"/>
 		/// </returns>
-		public int GC( GCOption what, int data )
-		{
-			return gc( state, what, data );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_getfenv" )]
-		private static extern void getFEnv( IntPtr state, int index );
-		
+		public static extern int lua_gc( HandleRef state, GCOption what, int data );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
-		/// Pushes onto the stack the environment table of the value at the given index.
+		/// Pushes onto the stack the environment table of the value at the given index. 
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
-		public void GetFEnv( int index )
-		{
-			getFEnv( state, index );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_getfield" )]
-		private static extern void getField( IntPtr state, int index, string key );
-
+		public static extern void lua_getfenv( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Pushes onto the stack the value t[k], where t is the value at the given valid index. As in Lua, this function may trigger a metamethod for the "index" event
 		/// </summary>
+		/// <param name="state">
+		/// A Lua State <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
-		/// A <see cref="System.Int32"/>
+		/// The stack index for the table to query. A <see cref="System.Int32"/>
 		/// </param>
 		/// <param name="key">
-		/// A <see cref="System.String"/>
+		/// The key to aquire. A <see cref="System.String"/>
 		/// </param>
-		public void GetField( int index, string key )
-		{
-			getField( state, index, key );
-		}
-		
+		public static extern void lua_getfield( HandleRef state, int index, string key );
+ 
 		/// <summary>
 		/// Pushes onto the stack the value of the global name.
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="name">
 		/// A <see cref="System.String"/>
 		/// </param>
-		public void GetGlobal( string name )
+		public static void lua_getglobal( HandleRef state, string name )
 		{
-			this.GetField( (int)PseudoIndice.Globals, name );
+			lua_getfield( state, (int)PseudoIndice.Globals, name );
 		}
 		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_getmetatable" )]
-		private static extern bool getMetaTable( IntPtr state, int index );
-		
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Pushes onto the stack the metatable of the value at the given acceptable index. If the index is not valid, or if the value does not have a metatable, the function returns 0 and pushes nothing on the stack. 
 		/// </summary>
-		/// <param name="index">
-		/// A <see cref="System.Int32"/>
+		/// <param name="state">
+		/// A Lua State. <see cref="HandleRef"/>
 		/// </param>
-		/// <returns>
-		/// A <see cref="System.Boolean"/>
-		/// </returns>
-		public bool GetMetaTable( int index )
-		{
-			return getMetaTable( state, index );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_gettable" )]
-		private static extern void getTable( IntPtr state, int index );
-		
+		/// <param name="index">
+		/// A valid stack index. <see cref="System.Int32"/>
+		/// </param>
+		public static extern int lua_getmetatable( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Pushes onto the stack the value t[k], where t is the value at the given valid index and k is the value at the top of the stack. 
 		/// This function pops the key from the stack (putting the resulting value in its place). 
 		/// As in Lua, this function may trigger a metamethod for the "index" event
 		/// </summary>
-		/// <param name="index">
-		/// A <see cref="System.Int32"/>
+		/// <param name="state">
+		/// A Lua State. <see cref="HandleRef"/>
 		/// </param>
-		public void GetTable( int index )
-		{
-			getTable( state, index );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_gettop" )]
-		private static extern int getTop( IntPtr state );
-		
+		/// <param name="index">
+		/// A valid stack index. <see cref="System.Int32"/>
+		/// </param>
+		public static extern void lua_gettable( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Returns the index of the top element in the stack. Because indices start at 1, this result is equal to the number of elements in the stack (and so 0 means an empty stack). 
 		/// </summary>
+		/// <param name="state">
+		/// A Lua State. <see cref="HandleRef"/>
+		/// </param>
 		/// <returns>
 		/// A <see cref="System.Int32"/>
 		/// </returns>
-		public int GetTop()
-		{
-			return getTop( state );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_insert" )]
-		private static extern void insert( IntPtr state, int index );
-		
+		public static extern int lua_gettop( HandleRef state );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Moves the top element into the given valid index, shifting up the elements above this index to open space. Cannot be called with a pseudo-index, because a pseudo-index is not an actual stack position.
 		/// </summary>
-		/// <param name="index">
-		/// A <see cref="System.Int32"/>
+		/// <param name="state">
+		/// A Lua State. <see cref="HandleRef"/>
 		/// </param>
-		public void Insert( int index )
+		/// <param name="index">
+		/// A valid stack index. <see cref="System.Int32"/>
+		/// </param>
+		public static extern void lua_insert( HandleRef state, int index );
+ 
+		public static bool lua_isboolean( HandleRef state, int index )
 		{
-			insert( state, index );
+			return lua_type( state, index ) == LuaType.Boolean;
 		}
 		
-		public bool IsBoolean( int index )
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
+		public static extern bool lua_iscfunction( HandleRef state, int index );
+ 
+		public static bool lua_isfunction( HandleRef state, int index )
 		{
-			return Type( index ) == LuaType.Boolean;
+			return lua_type( state, index ) == LuaType.Function;
 		}
-		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_iscfunction" )]
-		private static extern bool isCFunction( IntPtr state, int index );
-		
-		public bool IsCFunction( int index )
+ 
+		public static bool lua_islightuserdata( HandleRef state, int index )
 		{
-			return isCFunction( state, index );
+			return lua_type( state, index ) == LuaType.LightUserdata;
 		}
-		
-		public bool IsFunction( int index )
+ 
+		public static bool lua_isnil( HandleRef state, int index )
 		{
-			return Type( index ) == LuaType.Function;
+			return lua_type( state, index ) == LuaType.Nil;
 		}
-		
-		public bool IsLightUserdata( int index )
+ 
+		public static bool lua_isnone( HandleRef state, int index )
 		{
-			return Type( index ) == LuaType.LightUserdata;
+			return lua_type( state, index ) == LuaType.None;
 		}
-		
-		public bool IsNil( int index )
+ 
+		public static bool lua_isnoneornil( HandleRef state, int index )
 		{
-			return Type( index ) == LuaType.Nil;
-		}
-		
-		public bool IsNone( int index )
-		{
-			return Type( index ) == LuaType.None;
-		}
-		
-		public bool IsNoneOrNil( int index )
-		{
-			LuaType t = Type( index );
+			LuaType t = lua_type( state, index );
 			return t == LuaType.None || t == LuaType.Nil;
 		}
-		
-		public bool IsNumber( int index )
-		{			
-			return Type( index ) == LuaType.Number;
-		}
-
-		public bool IsString( int index )
+ 
+		public static bool lua_isnumber( HandleRef state, int index )
 		{
-			return Type( index ) == LuaType.String;
+			return lua_type( state, index ) == LuaType.Number;
 		}
-		
-		public bool IsTable( int index )
+ 
+		public static bool lua_isstring( HandleRef state, int index )
 		{
-			return Type( index ) == LuaType.Table;
+			return lua_type( state, index ) == LuaType.String;
 		}
-		
-		public bool IsThread( int index )
+ 
+		public static bool lua_istable( HandleRef state, int index )
 		{
-			return Type( index ) == LuaType.Thread;
+			return lua_type( state, index ) == LuaType.Table;
 		}
-		
-		public bool IsUserdata( int index )
+ 
+		public static bool lua_isthread( HandleRef state, int index )
 		{
-			return Type( index ) == LuaType.UserData;			
+			return lua_type( state, index ) == LuaType.Thread;
+		}
+ 
+		public static bool lua_isuserdata( HandleRef state, int index )
+		{
+			return lua_type( state, index ) == LuaType.UserData;			
 		}
 		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_lessthan" )]
-		private static extern bool lessThan( IntPtr state, int index1, int index2 );
-		
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Returns true if the value at acceptable index index1 is smaller than the value at acceptable index index2, following the semantics of the Lua < operator (that is, may call metamethods). Otherwise returns false. Also returns false if any of the indices is non valid. 
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index1">
 		/// A <see cref="System.Int32"/>
 		/// </param>
@@ -503,79 +440,74 @@ namespace LuaWrap
 		/// <returns>
 		/// A <see cref="System.Boolean"/>
 		/// </returns>
-		public bool LessThan( int index1, int index2 )
-		{
-			return lessThan( state, index1, index2 );
-		}
-
+		public static extern bool lua_lessthan( HandleRef state, int index1, int index2 );
+ 
 		/// <summary>
 		/// Creates a new empty table and pushes it onto the stack. It is equivalent to lua_createtable(L, 0, 0).
 		/// </summary>
-		public void NewTable()
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
+		public static void lua_newtable( HandleRef state )
 		{
-			CreateTable( 0, 0 );
+			lua_createtable( state, 0, 0 );	
 		}
 		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_newuserdata" )]
-		private static extern IntPtr newUserdata( IntPtr state, int size );
-		
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// This function allocates a new block of memory with the given size, pushes onto the stack a new full userdata with the block address, and returns this address. 
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="size">
 		/// A <see cref="System.Int32"/>
 		/// </param>
 		/// <returns>
-		/// A <see cref="IntPtr"/>
+		/// A <see cref="HandleRef"/>
 		/// </returns>
-		public IntPtr NewUserData( int size )
-		{
-			return newUserdata( state, size );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_next" )]
-		private static extern bool next( IntPtr state, int index );
-		
+		public static extern IntPtr lua_newuserdata( HandleRef state, int size );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Pops a key from the stack, and pushes a key-value pair from the table at the given index (the "next" pair after the given key). If there are no more elements in the table, then lua_next returns false (and pushes nothing). 
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
 		/// <returns>
-		/// A <see cref="System.Boolean"/>
+		/// A <see cref="System.Int32"/>
 		/// </returns>
-		public bool Next( int index )
-		{
-			return next( state, index );
-		}			
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_objlen" )]
-		private static extern int objLen( IntPtr state, int index );
-		
+		public static extern bool lua_next( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Returns the "length" of the value at the given acceptable index: for strings, this is the string length; for tables, this is the result of the length operator ('#'); for userdata, this is the size of the block of memory allocated for the userdata; for other values, it is 0. 
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
 		/// <returns>
 		/// A <see cref="System.Int32"/>
 		/// </returns>
-		public int ObjLen( int index )
-		{
-			return objLen( state, index );
-		}
+		public static extern int lua_objlen( HandleRef state, int index );
 		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_pcall" )]
-		private static extern LuaEnum pCall( IntPtr state, int nargs, int nresults, int errfunc );
-		
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Calls a function in protected mode.
 		/// Both nargs and nresults have the same meaning as in lua_call. If there are no errors during the call, lua_pcall behaves exactly like lua_call. However, if there is any error, lua_pcall catches it, pushes a single value on the stack (the error message), and returns an error code. Like lua_call, lua_pcall always removes the function and its arguments from the stack.
 		/// If errfunc is 0, then the error message returned on the stack is exactly the original error message. Otherwise, errfunc is the stack index of an error handler function. (In the current implementation, this index cannot be a pseudo-index.) In case of runtime errors, this function will be called with the error message and its return value will be the message returned on the stack by lua_pcall.
 		/// Typically, the error handler function is used to add more debug information to the error message, such as a stack traceback. Such information cannot be gathered after the return of lua_pcall, since by then the stack has unwound. 
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="nargs">
 		/// A <see cref="System.Int32"/>
 		/// </param>
@@ -586,172 +518,167 @@ namespace LuaWrap
 		/// A <see cref="System.Int32"/>
 		/// </param>
 		/// <returns>
-		/// A <see cref="LuaEnum"/>
+		/// A <see cref="System.Int32"/>
 		/// </returns>
-		public LuaEnum PCall( int nargs, int nresults, int errfunc )
-		{
-			return pCall( state, nargs, nresults, errfunc );
-		}
-		
+		public static extern LuaEnum lua_pcall( HandleRef state, int nargs, int nresults, int errfunc );
+ 
 		/// <summary>
 		/// Pops n elements from the stack.
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="n">
 		/// A <see cref="System.Int32"/>
 		/// </param>
-		public void Pop( int n )
+		public static void lua_pop( HandleRef state, int n )
 		{
-			SetTop( -n - 1 );
+			lua_settop( state, -n - 1 );
 		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_pushboolean" )]
-		private static extern void pushBoolean( IntPtr state, bool b );
-		
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Pushes a boolean value with value b onto the stack. 
 		/// </summary>
-		/// <param name="b">
-		/// A <see cref="System.Boolean"/>
-		/// </param>		
-		public void PushBoolean( bool b )
-		{
-			pushBoolean( state, b );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_pushcclosure" )]
-		private static extern void pushCClosure( IntPtr state, CallbackFunction fn, int n );
-		
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
+		/// <param name="str">
+		/// A <see cref="System.String"/>
+		/// </param>
+		/// <returns>
+		/// A <see cref="System.Int32"/>
+		/// </returns>
+		public static extern void lua_pushboolean( HandleRef state, bool b );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Pushes a new C closure onto the stack.
 		/// When a C function is created, it is possible to associate some values with it, thus creating a C closure; these values are then accessible to the function whenever it is called. To associate values with a C function, first these values should be pushed onto the stack (when there are multiple values, the first value is pushed first). Then lua_pushcclosure is called to create and push the C function onto the stack, with the argument n telling how many values should be associated with the function. lua_pushcclosure also pops these values from the stack.
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="fn">
 		/// A <see cref="CallbackFunction"/>
 		/// </param>
 		/// <param name="n">
 		/// A <see cref="System.Int32"/>
 		/// </param>
-		public void PushCClosure( CallbackFunction fn, int n  )
-		{
-			pushCClosure( state, fn, n );
-		}
-
+		public static extern void lua_pushcclosure( HandleRef state, CallbackFunction fn, int n );
+ 
 		/// <summary>
 		/// Pushes a C function onto the stack. This function receives a pointer to a C function and pushes onto the stack a Lua value of type function that, when called, invokes the corresponding C function. 
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="fn">
 		/// A <see cref="CallbackFunction"/>
 		/// </param>
-		public void PushCFunction( CallbackFunction fn )
+		public static void lua_pushcfunction( HandleRef state, CallbackFunction fn )
 		{
-			PushCClosure( fn, 0 );
+			lua_pushcclosure( state, fn, 0 );
 		}
 		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_pushinteger" )]
-		private static extern void pushInteger( IntPtr state, int i );
-		
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Pushes a number with value n onto the stack.
 		/// </summary>
-		/// <param name="i">
-		/// A <see cref="System.Int32"/>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
 		/// </param>
-		public void PushInteger( int i )
-		{
-			pushInteger( state, i );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_pushlightuserdata" )]
-		private static extern void pushLightUserdata( IntPtr state, IntPtr p );
-		
+		/// <param name="str">
+		/// A <see cref="System.String"/>
+		/// </param>
+		/// <returns>
+		/// A <see cref="System.Int32"/>
+		/// </returns>
+		public static extern void lua_pushinteger( HandleRef state, int i );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Pushes a light userdata onto the stack. 
 		/// Userdata represent C values in Lua. A light userdata represents a pointer. It is a value (like a number): you do not create it, it has no individual metatable, and it is not collected (as it was never created). A light userdata is equal to "any" light userdata with the same C address.
 		/// </summary>
-		/// <param name="p">
-		/// A <see cref="IntPtr"/>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
 		/// </param>
-		public void PushLightUserdata( IntPtr p )
-		{
-			pushLightUserdata( state, p );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_pushlstring" )]
-		private static extern void pushLString( IntPtr state, string s, int len );
-		
+		/// <param name="p">
+		/// A <see cref="HandleRef"/>
+		/// </param>
+		public static extern void lua_pushlightuserdata( HandleRef state, IntPtr p );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Pushes the string s with size len onto the stack. Lua makes (or reuses) an internal copy of the given string, so the memory at s can be freed or reused immediately after the function returns. The string can contain embedded zeros.
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="s">
 		/// A <see cref="System.String"/>
 		/// </param>
 		/// <param name="len">
 		/// A <see cref="System.Int32"/>
 		/// </param>
-		public void PushLString( string s, int len )
-		{
-			pushLString( state, s, len );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_pushnil" )]
-		private static extern void pushNil( IntPtr state );
-		
+		public static extern void lua_pushlstring( HandleRef state, string s, int len );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Pushes nil onto the stack.
 		/// </summary>
-		public void PushNil()
-		{
-			pushNil( state );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_pushnumber" )]
-		private static extern void pushNumber( IntPtr state, double number );
-		
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
+		public static extern void lua_pushnil( HandleRef state );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
-		/// Push a LuaNumber onto the stack.
+		/// Push a lua number onto the stack.
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="number">
 		/// A <see cref="System.Double"/>
 		/// </param>
-		public void PushNumber( double number )
-		{
-			pushNumber( state, number );				
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_pushstring" )]
-		private static extern void pushString( IntPtr state, string s );
-		
+		public static extern void lua_pushnumber( HandleRef state, double number );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
-		/// Pushes the given string onto the Lua stack.
+		/// Pushes a string onto the stack.
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="s">
 		/// A <see cref="System.String"/>
 		/// </param>
-		public void PushString( string s )
-		{
-			pushString( state, s );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_pushvalue" )]
-		private static extern void pushValue( IntPtr state, int index );
-		
+		public static extern void lua_pushstring( HandleRef state, string s );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
-		/// Pushes a copy of the object at given index onto the stack.
+		/// Pushes a copy of the object at index onto the stack.
 		/// </summary>
-		/// <param name="index">
-		/// A <see cref="System.Int32"/>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
 		/// </param>
-		public void PushValue( int index )
-		{
-			pushValue( state, index );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_rawequal" )]
-		private static extern bool rawEqual( IntPtr state, int index1, int index2 );
-		
+		/// <param name="str">
+		/// A <see cref="System.String"/>
+		/// </param>
+		/// <returns>
+		/// A <see cref="System.Int32"/>
+		/// </returns>
+		public static extern void lua_pushvalue( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Returns true if the two values in acceptable indices index1 and index2 are primitively equal (that is, without calling metamethods). Otherwise returns false. Also returns false if any of the indices are non valid. 
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index1">
 		/// A <see cref="System.Int32"/>
 		/// </param>
@@ -761,317 +688,286 @@ namespace LuaWrap
 		/// <returns>
 		/// A <see cref="System.Boolean"/>
 		/// </returns>
-		public bool RawEqual( int index1, int index2 )
-		{
-			return rawEqual( state, index1, index2 );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_rawget" )]
-		private static extern void rawGet( IntPtr state, int index );
-		
+		public static extern bool lua_rawequal( HandleRef state, int index1, int index2 );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
-		/// Similar to GetTable, but does a raw access (i.e., without metamethods).
+		/// Similar to lua_gettable, but does a raw access (i.e., without metamethods).
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
-		public void RawGet( int index )
-		{
-			rawGet( state, index );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_rawgeti" )]
-		private static extern void rawGetI( IntPtr state, int index, int n );
-		
+		public static extern void lua_rawget( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Pushes onto the stack the value t[n], where t is the value at the given valid index. The access is raw; that is, it does not invoke metamethods.
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
 		/// <param name="n">
 		/// A <see cref="System.Int32"/>
 		/// </param>
-		public void RawGetI( int index, int n )
-		{
-			rawGetI( state, index, n );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_rawset" )]
-		private static extern void rawSet( IntPtr state, int index );
-		
+		public static extern void lua_rawgeti( HandleRef state, int index, int n );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Similar to lua_settable, but does a raw assignment (i.e., without metamethods).
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
-		public void RawSet( int index )
-		{
-			rawSet( state, index );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_rawseti" )]
-		private static extern void rawSetI( IntPtr state, int index, int n );
-		
+		public static extern void lua_rawset( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Does the equivalent of t[n] = v, where t is the value at the given valid index and v is the value at the top of the stack.
 		/// This function pops the value from the stack. The assignment is raw; that is, it does not invoke metamethods.
 		/// </summary>
-		/// <param name="index">
-		/// A <see cref="System.Int32"/>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
 		/// </param>
-		/// <param name="n">
-		/// A <see cref="System.Int32"/>
+		/// <param name="str">
+		/// A <see cref="System.String"/>
 		/// </param>
-		public void RawSetI( int index, int n )
-		{
-			rawSetI( state, index, n );
-		}
-
+		/// <returns>
+		/// A <see cref="System.Int32"/>
+		/// </returns>
+		public static extern void lua_rawseti( HandleRef state, int index, int n );
+ 
 		/// <summary>
 		/// Registers a C function as the global name.
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="name">
 		/// A <see cref="System.String"/>
 		/// </param>
 		/// <param name="fn">
 		/// A <see cref="CallbackFunction"/>
 		/// </param>
-		public void Register( string name, CallbackFunction fn )
+		public static void lua_register( HandleRef state, string name, CallbackFunction fn )
 		{
-			PushCFunction( fn );
-			SetGlobal( name );
+			lua_pushcfunction( state, fn );
+			lua_setglobal( state, name );
 		}
 		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_remove" )]
-		private static extern void lua_remove( IntPtr state, int index );
-		
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Removes the element at the given valid index, shifting down the elements above this index to fill the gap. Cannot be called with a pseudo-index, because a pseudo-index is not an actual stack position. 
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
-		public void Remove( int index )
-		{
-			lua_remove( state, index );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_replace" )]
-		private static extern void replace( IntPtr state, int index );
-		
+		public static extern void lua_remove( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Moves the top element into the given position (and pops it), without shifting any element (therefore replacing the value at the given position). 
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
-		public void Replace( int index )
-		{
-			replace( state, index );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_setfenv" )]
-		private static extern bool setFEnv( IntPtr state, int index );
-		
+		public static extern void lua_replace( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Pops a table from the stack and sets it as the new environment for the value at the given index. If the value at the given index is neither a function nor a thread nor a userdata, lua_setfenv returns false. Otherwise it returns true. 
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
 		/// <returns>
-		/// A <see cref="System.Boolean"/>
-		/// </returns>		
-		public bool SetFEnv( int index )
-		{
-			return setFEnv( state, index );
-		}
+		/// A <see cref="System.Int32"/>
+		/// </returns>
+		public static extern bool lua_setfenv( HandleRef state, int index );
 		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_setfield" )]
-		private static extern void setField( IntPtr state, int index, string name );
-		
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Does the equivalent to t[k] = v, where t is the value at the given valid index and v is the value at the top of the stack.
 		/// This function pops the value from the stack. As in Lua, this function may trigger a metamethod for the "newindex" event
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
 		/// <param name="name">
 		/// A <see cref="System.String"/>
 		/// </param>
-		public void SetField( int index, string name )
-		{
-			setField( state, index, name );
-		}
-
+		public static extern void lua_setfield( HandleRef state, int index, string name );
+ 
 		/// <summary>
 		/// Pops a value from the stack and sets it as the new value of global name.
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="name">
 		/// A <see cref="System.String"/>
 		/// </param>
-		public void SetGlobal( string name )
+		public static void lua_setglobal( HandleRef state, string name )
 		{
-			SetField( (int)PseudoIndice.Globals, name );
+			lua_setfield( state, (int)PseudoIndice.Globals, name );
 		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_setmetatable" )]
-		private static extern void setMetatable( IntPtr state, int index );
-		
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Pops a table from the stack and sets it as the new metatable for the value at the given acceptable index. 
 		/// </summary>
-		/// <param name="index">
-		/// A <see cref="System.Int32"/>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
 		/// </param>
-		public void SetMetatable( int index )
-		{
-			setMetatable( state, index );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_settable" )]
-		private static extern void setTable( IntPtr state, int index );
-
-		/// <summary>
-		/// Does the equivalent to t[k] = v, where t is the value at the given valid index, v is the value at the top of the stack, and k is the value just below the top.
-		/// This function pops both the key and the value from the stack. As in Lua, this function may trigger a metamethod for the "newindex" event.
-		/// </summary>
-		/// <param name="index">
-		/// A <see cref="System.Int32"/>
-		/// </param>
-		public void SetTable( int index )
-		{
-			setTable( state, index );
-		}
-		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_settop" )]
-		private static extern void setTop( IntPtr state, int index );
-		
-		/// <summary>
-		/// Accepts any acceptable index, or 0, and sets the stack top to this index. If the new top is larger than the old one, then the new elements are filled with nil. If index is 0, then all stack elements are removed. 
-		/// </summary>
-		/// <param name="index">
-		/// A <see cref="System.Int32"/>
-		/// </param>
-		public void SetTop( int index )
-		{
-			setTop( state, index );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_toboolean" )]
-		private static extern bool toBoolean( IntPtr state, int index );
-		
-		/// <summary>
-		/// Converts the Lua value at the given acceptable index to a boolean value. Like all tests in Lua, lua_toboolean returns true for any Lua value different from false and nil; otherwise it returns false. It also returns false when called with a non-valid index. (If you want to accept only actual boolean values, use lua_isboolean to test the value's type.)
-		/// </summary>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
 		/// <returns>
 		/// A <see cref="System.Boolean"/>
 		/// </returns>
-		public bool ToBoolean( int index )
-		{
-			return toBoolean( state, index );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_tocfunction" )]
-		private static extern CallbackFunction toCFunction( IntPtr state, int index );
-		
+		public static extern void lua_setmetatable( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
+		/// <summary>
+		/// Does the equivalent to t[k] = v, where t is the value at the given valid index, v is the value at the top of the stack, and k is the value just below the top.
+		/// This function pops both the key and the value from the stack. As in Lua, this function may trigger a metamethod for the "newindex" event.
+		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
+		/// <param name="index">
+		/// A <see cref="System.Int32"/>
+		/// </param>
+		public static extern void lua_settable( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
+		/// <summary>
+		/// Accepts any acceptable index, or 0, and sets the stack top to this index. If the new top is larger than the old one, then the new elements are filled with nil. If index is 0, then all stack elements are removed. 
+		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
+		/// <param name="index">
+		/// A <see cref="System.Int32"/>
+		/// </param>
+		public static extern void lua_settop( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
+		/// <summary>
+		/// Converts the Lua value at the given acceptable index to a boolean value. Like all tests in Lua, lua_toboolean returns true for any Lua value different from false and nil; otherwise it returns false. It also returns false when called with a non-valid index. (If you want to accept only actual boolean values, use lua_isboolean to test the value's type.)
+		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
+		/// <param name="index">
+		/// A <see cref="System.Int32"/>
+		/// </param>
+		/// <returns>
+		/// A <see cref="System.Boolean"/>
+		/// </returns>
+		public static extern bool lua_toboolean( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Converts a value at the given acceptable index to a C function. That value must be a C function; otherwise, returns NULL.
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
 		/// <returns>
 		/// A <see cref="CallbackFunction"/>
 		/// </returns>
-		public CallbackFunction ToCFunction( int index )
-		{
-			return toCFunction( state, index );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_tointeger" )]
-		private static extern int toInteger( IntPtr state, int index );
-
+		public static extern CallbackFunction lua_tocfunction( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Converts the Lua value at the given acceptable index to the signed integral type lua_Integer. The Lua value must be a number or a string convertible to a number (see §2.2.1); otherwise, lua_tointeger returns 0. 
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
 		/// <returns>
 		/// A <see cref="System.Int32"/>
 		/// </returns>
-		public int ToInteger( int index )
-		{
-			return toInteger( state, index );
-		}
-		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_tolstring" )]
-		private static extern IntPtr toLString( IntPtr state, int index, out int length );
-		
+		public static extern int lua_tointeger( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Converts the Lua value at the given acceptable index to a C string. If len is not NULL, it also sets *len with the string length. The Lua value must be a string or a number; otherwise, the function returns NULL. If the value is a number, then lua_tolstring also changes the actual value in the stack to a string. (This change confuses lua_next when lua_tolstring is applied to keys during a table traversal.)
 		/// lua_tolstring returns a fully aligned pointer to a string inside the Lua state. This string always has a zero ('\0') after its last character (as in C), but can contain other zeros in its body. Because Lua has garbage collection, there is no guarantee that the pointer returned by lua_tolstring will be valid after the corresponding value is removed from the stack. 
 		/// </summary>
-		/// <param name="index">
-		/// A <see cref="System.Int32"/>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
 		/// </param>
-		/// <param name="length">
-		/// A <see cref="System.Int32"/>
+		/// <param name="str">
+		/// A <see cref="System.String"/>
 		/// </param>
 		/// <returns>
-		/// A <see cref="IntPtr"/>
+		/// A <see cref="System.Int32"/>
 		/// </returns>
-		public IntPtr ToLString( int index, out int length )
-		{
-			return toLString( state, index, out length );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_tonumber" )]
-		private static extern double toNumber( IntPtr state, int index );
-		
+		public static extern IntPtr lua_tolstring( HandleRef state, int index, out int length );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Converts the Lua value at the given acceptable index to a number. The Lua value must be a number or a string convertible to a number, otherwise returns 0.
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
 		/// <returns>
 		/// A <see cref="System.Double"/>
 		/// </returns>
-		public double ToNumber( int index )
-		{
-			return toNumber( state, index );			
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_topointer" )]
-		private static extern IntPtr toPointer( IntPtr state, int index );
-
+		public static extern double lua_tonumber( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Converts the value at the given acceptable index to a generic pointer. The value can be a userdata, a table, a thread, or a function; otherwise, lua_topointer returns NULL. Different objects will give different pointers. There is no way to convert the pointer back to its original value. 
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
 		/// <returns>
-		/// A <see cref="IntPtr"/>
+		/// A <see cref="HandleRef"/>
 		/// </returns>
-		public IntPtr ToPointer( int index )		
-		{
-			return toPointer( state, index );
-		}
-
+		public static extern IntPtr lua_topointer( HandleRef state, int index );
+ 
 		/// <summary>
 		/// Equivalent to lua_tolstring with len equal to NULL.
 		/// </summary>
 		/// <param name="state">
-		/// A <see cref="IntPtr"/>
+		/// A <see cref="HandleRef"/>
 		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
@@ -1079,92 +975,72 @@ namespace LuaWrap
 		/// <returns>
 		/// A <see cref="System.String"/>
 		/// </returns>
-		public string ToString( int index )
+		public static string lua_tostring( HandleRef state, int index )
 		{
             int length;
-            IntPtr str = ToLString( index, out length );
+            IntPtr str = lua_tolstring( state, index, out length );
             if( str != IntPtr.Zero )
                 return Marshal.PtrToStringAnsi( str, length );
-
+ 
             return null;
 		}
 		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_touserdata" )]
-		private static extern IntPtr toUserdata( IntPtr state, int index );
-		
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// If the value at the given acceptable index is a full userdata, returns its block address. If the value is a light userdata, returns its pointer. Otherwise, returns NULL.
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
 		/// <returns>
-		/// A <see cref="IntPtr"/>
+		/// A <see cref="HandleRef"/>
 		/// </returns>
-		public IntPtr ToUserdata( int index )
-		{
-			return toUserdata( state, index );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_type" )]
-		private static extern LuaType type( IntPtr state, int index );
-		
+		public static extern IntPtr lua_touserdata( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Returns the type of the value in the given acceptable index, or NONE for a non-valid index (that is, an index to an "empty" stack position).
 		/// </summary>
-		/// <param name="index">
-		/// A <see cref="System.Int32"/>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
+		/// <param name="str">
+		/// A <see cref="System.String"/>
 		/// </param>
 		/// <returns>
-		/// A <see cref="LuaType"/>
+		/// A <see cref="System.Int32"/>
 		/// </returns>
-		public LuaType Type( int index )
-		{
-			return type( state, index );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "lua_typename" )]
-		private static extern string typeName( IntPtr state, LuaType type );
-		
+		public static extern LuaType lua_type( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
-		/// Returns the name of the type encoded by the value type.
+		/// Returns the name of the type encoded by the value tp.
 		/// </summary>
-		/// <param name="type">
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
+		/// <param name="tp">
 		/// A <see cref="LuaType"/>
 		/// </param>
 		/// <returns>
 		/// A <see cref="System.String"/>
 		/// </returns>
-		public string TypeName( LuaType type )
-		{
-			return typeName( state, type );
-		}
-		
-		/// <summary>
-		/// Produces up value pseudo indices for C Closures.
-		/// The first value associated with a function is at position UpValueIndex(1), and so on. Any access to UpValueIndex(n), where n is greater than the number of upvalues of the current function (but not greater than 256), produces an acceptable (but invalid) index.
-		/// </summary>
-		/// <param name="i">
-		/// A <see cref="System.Int32"/>
-		/// </param>
-		/// <returns>
-		/// A <see cref="System.Int32"/>
-		/// </returns>
-		public int UpValueIndex( int i )
-		{
-			return ((int)PseudoIndice.Globals) - i;
-		}
-		
+		public static extern string lua_typename( HandleRef state, LuaType tp );
+ 
 		#endregion
-		
+ 
 		#region Auxiliary Library
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_callmeta" )]
-		private static extern bool auxCallMeta( IntPtr state, int index, string key );
-		
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
-		/// If the object at index obj has a metatable and this metatable has a field e, this function calls this field and passes the object as its only argument. In this case this function returns true and pushes onto the stack the value returned by the call. If there is no metatable or no metamethod, this function returns false (without pushing any value on the stack).
+		/// If the object at index obj has a metatable and this metatable has a field e, this function calls this field and passes the object as its only argument. In this case this function returns 1 and pushes onto the stack the value returned by the call. If there is no metatable or no metamethod, this function returns 0 (without pushing any value on the stack).
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
@@ -1172,18 +1048,15 @@ namespace LuaWrap
 		/// A <see cref="System.String"/>
 		/// </param>
 		/// <returns>
-		/// A <see cref="System.Boolean"/>
+		/// A <see cref="System.Int32"/>
 		/// </returns>
-		public bool AuxCallMeta( int index, string key )
-		{
-			return auxCallMeta( state, index, key );
-		}
-
+		public static extern int luaL_callmeta( HandleRef state, int index, string key );
+ 
 		/// <summary>
 		/// Loads and runs the given file.
 		/// </summary>
 		/// <param name="state">
-		/// A <see cref="IntPtr"/>
+		/// A <see cref="HandleRef"/>
 		/// </param>
 		/// <param name="filename">
 		/// A <see cref="System.String"/>
@@ -1191,16 +1064,16 @@ namespace LuaWrap
 		/// <returns>
 		/// A <see cref="System.Boolean"/>
 		/// </returns>
-		public bool AuxDoFile( string filename )
+		public static bool luaL_dofile( HandleRef state, string filename )
 		{
-			return ( AuxLoadFile( filename ) == LuaEnum.Ok ) && ( PCall( 0, (int)LuaEnum.MultiRet, 0 ) == LuaEnum.Ok );
+			return ( luaL_loadfile( state, filename ) == LuaEnum.Ok ) && ( lua_pcall( state, 0, (int)LuaEnum.MultiRet, 0 ) == LuaEnum.Ok );
 		}
-
+ 
 		/// <summary>
 		/// Loads and runs the given string.
 		/// </summary>
 		/// <param name="state">
-		/// A <see cref="IntPtr"/>
+		/// A <see cref="HandleRef"/>
 		/// </param>
 		/// <param name="chunk">
 		/// A <see cref="System.String"/>
@@ -1208,37 +1081,33 @@ namespace LuaWrap
 		/// <returns>
 		/// A <see cref="System.Boolean"/>
 		/// </returns>
-		public bool AuxDoString( string chunk )
+		public static bool luaL_dostring( HandleRef state, string chunk )
 		{
-			return ( AuxLoadString( chunk ) == LuaEnum.Ok ) && ( PCall( 0, (int)LuaEnum.MultiRet, 0 ) == LuaEnum.Ok );
+			return ( luaL_loadstring( state, chunk ) == LuaEnum.Ok ) && ( lua_pcall( state, 0, (int)LuaEnum.MultiRet, 0 ) == LuaEnum.Ok );
 		}
-
-		// Commented out as the mono c# compiler crashes with the AuxError __arglist usage. And the C# parser for MonoDevelop does not handle it properly either.
-		/*
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_error" )]
-		private static extern void auxError( IntPtr state, string format, __arglist );
-		
+ 
+		//[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Raises an error. The error message format is given by fmt plus any extra arguments, following the same rules of lua_pushfstring. It also adds at the beginning of the message the file name and the line number where the error occurred, if this information is available. 
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="format">
 		/// A <see cref="System.String"/>
 		/// </param>
 		/// <param name="__arglist">
 		/// A <see cref="__arglist"/>
 		/// </param>
-		public void AuxError( string format, __arglist )
-		{
-			auxError( state, format, __arglist );
-		}
-		*/
-		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_getmetafield" )]
-		private static extern bool auxGetMetafield( IntPtr state, int index, string key );
-		
+		//public static extern void luaL_error( HandleRef state, string format, __arglist );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Pushes onto the stack the field key from the metatable of the object at the given index. If the object does not have a metatable, or if the metatable does not have this field, returns false and pushes nothing.
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
@@ -1248,31 +1117,27 @@ namespace LuaWrap
 		/// <returns>
 		/// A <see cref="System.Boolean"/>
 		/// </returns>
-		public bool AuxGetMetafield( int index, string key )
-		{
-			return auxGetMetafield( state, index, key );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_getmetatable" )]
-		private static extern void auxGetMetatable( IntPtr state, string key );
-		
+		public static extern bool luaL_getmetafield( HandleRef state, int index, string key );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Pushes onto the stack the metatable associated with name tname in the registry (see luaL_newmetatable).
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="key">
 		/// A <see cref="System.String"/>
 		/// </param>
-		public void AuxGetMetatable( string key )
-		{
-			auxGetMetatable( state, key );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_loadbuffer" )]
-		private static extern LuaEnum auxLoadBuffer( IntPtr state, string buffer, int size, string name );
-		
+		public static extern void luaL_getmetatable( HandleRef state, string key );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Loads a buffer as a Lua chunk. This function uses lua_load to load the chunk in the buffer pointed to by buff with size sz. name is the chunk name, used for debug and errors.
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="buffer">
 		/// A <see cref="System.String"/>
 		/// </param>
@@ -1285,107 +1150,94 @@ namespace LuaWrap
 		/// <returns>
 		/// A <see cref="LuaEnum"/>
 		/// </returns>
-		public LuaEnum AuxLoadBuffer( string buffer, int size, string name )
-		{
-			return auxLoadBuffer( state, buffer, size, name );
-		}
+		public static extern LuaEnum luaL_loadbuffer( HandleRef state, string buffer, int size, string name );
 		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_loadfile" )]
-		private static extern LuaEnum AuxloadFile( IntPtr state, string filename );
-		
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Loads a file as a Lua chunk. This function uses lua_load to load the chunk in the file named filename. If filename is NULL, then it loads from the standard input. The first line in the file is ignored if it starts with a #. 
 		/// </summary>
-		/// <param name="filename">
-		/// A <see cref="System.String"/>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
 		/// </param>
-		/// <returns>
-		/// A <see cref="LuaEnum"/>
-		/// </returns>
-		public LuaEnum AuxLoadFile( string filename )
-		{
-			return AuxloadFile( state, filename );
-		}
-		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_loadstring" )]
-		private static extern LuaEnum auxLoadString( IntPtr state, string str );
-		
-		/// <summary>
-		/// Loads a string as a Lua chunk. This function uses lua_load to load the chunk within the zero-terminated string.
-		/// </summary>
 		/// <param name="str">
 		/// A <see cref="System.String"/>
 		/// </param>
 		/// <returns>
-		/// A <see cref="LuaEnum"/>
+		/// A <see cref="System.Int32"/>
 		/// </returns>
-		public LuaEnum AuxLoadString( string str )
-		{
-			return auxLoadString( state, str );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_newmetatable" )]
-		private static extern bool auxNewMetatable( IntPtr state, string key );
+		public static extern LuaEnum luaL_loadfile( HandleRef state, string filename );
 		
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
+		/// <summary>
+		/// Loads a string as a Lua chunk. This function uses lua_load to load the chunk within the zero-terminated string.
+		/// </summary>
+		/// <param name="state">
+		/// A Lua State.<see cref="HandleRef"/>
+		/// </param>
+		/// <param name="str">
+		/// A chunk to load.<see cref="System.String"/>
+		/// </param>
+		/// <returns>
+		/// A result code. LuaEnum.Ok, LuaEnum.ErrorSyntax or LuaEnum.ErrorMemory<see cref="System.Int32"/>
+		/// </returns>
+		public static extern LuaEnum luaL_loadstring( HandleRef state, string str );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// If the registry already has the given key, returns false. Otherwise, creates a new table to be used as a metatable for userdata, adds it to the registry with the given key, and returns true.
 		/// In both cases pushes onto the stack the final value associated with the given key in the registry.
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="key">
 		/// A <see cref="System.String"/>
 		/// </param>
 		/// <returns>
 		/// A <see cref="System.Boolean"/>
 		/// </returns>
-		public bool AuxNewMetatable( string key )
-		{
-			return auxNewMetatable( state, key );
-		}
+		public static extern bool luaL_newmetatable( HandleRef state, string key );
 		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_newstate" )]
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Creates a new Lua state. It calls lua_newstate with an allocator based on the standard C realloc function and then sets a panic function (see lua_atpanic) that prints an error message to the standard error output in case of fatal errors. 
 		/// </summary>
 		/// <returns>
-		/// A Lua State.<see cref="IntPtr"/>
+		/// A Lua State.<see cref="HandleRef"/>
 		/// </returns>
-		private static extern IntPtr auxNewState();
+		public static extern IntPtr luaL_newstate();
 		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_openlibs" )]
-		private static extern void auxOpenLibs( IntPtr state );
-
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Opens all standard Lua libraries into the given state.
 		/// </summary>
-		public void AuxOpenLibs()
-		{
-			auxOpenLibs( state );
-		}
-		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_ref" )]
-		private static extern int auxRef( IntPtr state, int t );
-		
+		/// <param name="state">
+		/// A Lua State.<see cref="HandleRef"/>
+		/// </param>
+		public static extern void luaL_openlibs( HandleRef state );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Creates and returns a reference, in the table at index t, for the object at the top of the stack (and pops the object).
 		/// A reference is a unique integer key. As long as you do not manually add integer keys into table t, luaL_ref ensures the uniqueness of the key it returns. You can retrieve an object referred by reference r by calling lua_rawgeti(L, t, r). Function luaL_unref frees a reference and its associated object.
 		/// If the object at the top of the stack is nil, luaL_ref returns the constant LUA_REFNIL. The constant LUA_NOREF is guaranteed to be different from any reference returned by luaL_ref. 
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="t">
 		/// A <see cref="System.Int32"/>
 		/// </param>
 		/// <returns>
 		/// A <see cref="System.Int32"/>
 		/// </returns>
-		public int AuxRef( int t )
-		{
-			return auxRef( state, t );
-		}
-
+		public static extern int luaL_ref( HandleRef state, int t );
+ 
 		/// <summary>
 		/// Pops the value referenced by reference by r in the table at index t onto the stack.
 		/// </summary>
 		/// <param name="state">
-		/// A <see cref="IntPtr"/>
+		/// A <see cref="HandleRef"/>
 		/// </param>
 		/// <param name="t">
 		/// A stack index
@@ -1393,79 +1245,84 @@ namespace LuaWrap
 		/// <param name="r">
 		/// A <see cref="System.Int32"/>
 		/// </param>
-		public void AuxGetRef( int t, int r )
+		public static void luaL_getref( HandleRef state, int t, int r )
 		{
-			RawGetI( t, r ); 
+			lua_rawgeti( state, t, r );	
 		}
 		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_unref" )]
-		private static extern void auxUnRef( IntPtr state, int t, int r );
-		
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
-		/// Releases reference ref from the table at index t (see luaL_ref). The entry is removed from the table, so that the referred object can be collected. The reference ref is also freed to be used again. 
+		/// Releases reference ref from the table at index t (see luaL_ef). The entry is removed from the table, so that the referred object can be collected. The reference ref is also freed to be used again. 
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="t">
 		/// A <see cref="System.Int32"/>
 		/// </param>
 		/// <param name="r">
 		/// A <see cref="System.Int32"/>
 		/// </param>
-		public void AuxUnRef( int t, int r )
-		{
-			auxUnRef( state, t, r );
-		}
+		/// <returns>
+		/// A <see cref="System.Int32"/>
+		/// </returns>
+		public static extern int luaL_unref( HandleRef state, int t, int r );
 		
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_typename" )]
-		private static extern string auxTypeName( IntPtr state, int index );
-		
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
-		/// Returns the name of the type of the value at the given index.
+		/// Returns the name of the type of the value at the given index. 
 		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="index">
 		/// A <see cref="System.Int32"/>
 		/// </param>
 		/// <returns>
 		/// A <see cref="System.String"/>
 		/// </returns>
-		public string AuxTypeName( int index )
-		{
-			return auxTypeName( state, index );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_typeerror" )]
-		private static extern void auxTypeError( IntPtr state, int narg, string expected );
-		
+		public static extern string luaL_typename( HandleRef state, int index );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Generates an error with a message like the following:
 		///      location: bad argument narg to 'func' (*** expected, got rt)
 		/// where location is produced by luaL_where, func is the name of the current function, and rt is the type name of the actual argument.
-		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="narg">
 		/// A <see cref="System.Int32"/>
 		/// </param>
 		/// <param name="expected">
 		/// A <see cref="System.String"/>
 		/// </param>
-		public void AuxTypeError( int narg, string expected )
-		{
-			auxTypeError( state, narg, expected );
-		}
-
-		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "luaL_where" )]
-		private static extern void auxWhere( IntPtr state, int level );
-		
+		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
+		/// <param name="narg">
+		/// A <see cref="System.Int32"/>
+		/// </param>
+		/// <param name="expected">
+		/// A <see cref="System.String"/>
+		/// </param>
+		public static extern void luaL_typeerror( HandleRef state, int narg, string expected );
+ 
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Pushes onto the stack a string identifying the current position of the control at level lvl in the call stack. Typically this string has the following format:
 		///      chunkname:currentline:
-		/// Level 0 is the running function, level 1 is the function that called the running function, etc.		/// </summary>
+		/// Level 0 is the running function, level 1 is the function that called the running function, etc.
+		/// </summary>
+		/// <param name="state">
+		/// A <see cref="HandleRef"/>
+		/// </param>
 		/// <param name="level">
 		/// A <see cref="System.Int32"/>
 		/// </param>
-		public void AuxWhere( int level )
-		{
-			auxWhere( state, level );
-		}
-		
+		public static extern void luaL_where( HandleRef state, int level );
+ 
 		#endregion
 	}
 }

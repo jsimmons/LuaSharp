@@ -30,27 +30,43 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 using LuaWrap;
 
 namespace LuaSharp
 {
-	public class LuaState
+	public class Lua : IDisposable
 	{		
-		internal Lua state;		
+		internal HandleRef state;
 		private CallbackFunction panicFunction;
 		
-		public LuaState()
+		public Lua()
 		{
-			state = new Lua();
-			state.AuxOpenLibs();
+			state = new HandleRef( this, LuaLib.luaL_newstate() );
 			
-			panicFunction = ( IntPtr s ) => { 
-				Lua l = Lua.GetInstance( s );
-				throw new LuaException( "Unprotected Lua error: " + l.ToString( -1 ) );
+			panicFunction = ( HandleRef s ) => {
+				throw new LuaException( "Error in call to Lua API: " + LuaLib.lua_tostring( s, -1 ) );
 			};
+			
+			LuaLib.lua_atpanic( state, panicFunction );
+		}
 		
-			state.AtPanic( panicFunction );			
+		~Lua()
+		{
+			Cleanup();
+		}
+		
+		public void Dispose()
+		{
+			Cleanup();
+			System.GC.SuppressFinalize( this );
+		}
+		
+		private void Cleanup()
+		{
+			LuaLib.lua_close( state );
+			state = new HandleRef( this, IntPtr.Zero );
 		}
 		
 		public object this[params object[] path]
@@ -89,7 +105,7 @@ namespace LuaSharp
 				Helpers.Push( state, o );
 				
 				// Perform the set.
-				state.SetTable( (int)PseudoIndice.Globals );
+				LuaLib.lua_settable( state, (int)PseudoIndice.Globals );
 			}
 			else
 			{
@@ -99,7 +115,7 @@ namespace LuaSharp
 			
 				// Need this here else we don't have enough control.
 				Helpers.Push( state, fragments[0] );
-				state.GetTable( (int)PseudoIndice.Globals );
+				LuaLib.lua_gettable( state, (int)PseudoIndice.Globals );
 				
 				/// Traverse the main section of the path, leaving the last table on top.
 				Helpers.Traverse( state, fragments );
@@ -111,10 +127,10 @@ namespace LuaSharp
 				Helpers.Push( state, o );
 				
 				// Perform the set.
-				state.SetTable( -3 );
+				LuaLib.lua_settable( state, -3 );
 				
 				// Remove the last table.
-				state.Remove( -1 );
+				LuaLib.lua_pop( state, -1 );
 			}
 		}
 		
@@ -136,7 +152,7 @@ namespace LuaSharp
 			else if( path.Length == 1 )
 			{
 				Helpers.Push( state, path[0] );
-				state.GetTable( (int)PseudoIndice.Globals );
+				LuaLib.lua_gettable( state, (int)PseudoIndice.Globals );
 				return Helpers.Pop( state );
 			}
 			else
@@ -147,7 +163,7 @@ namespace LuaSharp
 				
 				// Need this here else we don't have enough control.
 				Helpers.Push( state, fragments[0] );
-				state.GetTable( (int)PseudoIndice.Globals );
+				LuaLib.lua_gettable( state, (int)PseudoIndice.Globals );
 				
 				// Traverse the main section of the path, leaving the last table on the top.
 				Helpers.Traverse( state, fragments );
@@ -156,12 +172,12 @@ namespace LuaSharp
 				Helpers.Push( state, final );
 				
 				// Grab the result and throw it on the top of the stack.
-				state.GetTable( -2 );
+				LuaLib.lua_gettable( state, -2 );
 				
 				object o = Helpers.Pop( state );
 				
 				// Remove the last table.
-				state.Remove( -1 );
+				LuaLib.lua_pop( state, -1 );
 				
 				return o;
 			}
@@ -169,14 +185,14 @@ namespace LuaSharp
 		
 		public void DoString( string chunk )
 		{
-			if( !state.AuxDoString( chunk ) )
-				throw new LuaException( "Error executing chunk: " + state.ToString( -1 ) );
+			if( !LuaLib.luaL_dostring( state, chunk ) )
+				throw new LuaException( "Error executing chunk: " + LuaLib.lua_tostring( state, -1 ) );
 		}
 		
 		public void DoFile( string filename )
 		{
-			if( !state.AuxDoFile( filename ) )
-				throw new LuaException( "Error executing file: " + state.ToString( -1 ) );
+			if( !LuaLib.luaL_dofile( state, filename ) )
+				throw new LuaException( "Error executing file: " + LuaLib.lua_tostring( state, -1 ) );
 		}
 	}
 }

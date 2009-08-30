@@ -35,7 +35,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="LuaState.cs" />
+    <Compile Include="Lua.cs" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="LuaException.cs" />
     <Compile Include="Helpers.cs" />
