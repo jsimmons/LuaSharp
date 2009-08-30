@@ -26,7 +26,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 
 using LuaWrap;
 
@@ -50,7 +49,7 @@ namespace LuaSharp
 		};
 		#endregion
 		
-		public static void Push( HandleRef state, object o )
+		public static void Push( IntPtr state, object o )
 		{
 			// nil == null
 			if( o == null )
@@ -87,14 +86,14 @@ namespace LuaSharp
 			}			
 		}
 		
-		public static object Pop( HandleRef state )
+		public static object Pop( IntPtr state )
 		{
 			object o = GetObject( state, -1 );
 			LuaLib.lua_pop( state, 1 );
 			return o;
 		}
 		
-		public static object GetObject( HandleRef state, int index )
+		public static object GetObject( IntPtr state, int index )
 		{
 			LuaType type = LuaLib.lua_type( state, index );
 			
@@ -130,6 +129,8 @@ namespace LuaSharp
 					if( index != -1 )
 						LuaLib.lua_pushvalue( state, index );
 				
+					
+				
 					int reference = LuaLib.luaL_ref( state, (int)PseudoIndice.Registry );
 					return new LuaFunction( state, reference );
 				}
@@ -157,7 +158,7 @@ namespace LuaSharp
 		/// <param name="fragments">
 		/// A <see cref="System.Object[]"/>
 		/// </param>		
-		public static void Traverse( HandleRef state, params object[] fragments )
+		public static void Traverse( IntPtr state, params object[] fragments )
 		{			
 			for( int i = 1; i < fragments.Length; i++ )
 			{

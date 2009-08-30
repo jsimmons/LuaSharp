@@ -26,18 +26,17 @@
 
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 
 using LuaWrap;
 
 namespace LuaSharp
 {
-	public class LuaFunction
+	public class LuaFunction : IDisposable
 	{
-		private HandleRef state;
+		private IntPtr state;
 		internal int reference;
 		
-		public LuaFunction( HandleRef state, int reference )
+		public LuaFunction( IntPtr state, int reference )
 		{
 			this.state = state;
 			this.reference = reference;		
@@ -45,8 +44,23 @@ namespace LuaSharp
 		
 		~LuaFunction()
 		{
-			//Console.WriteLine( "Destroying function referenced by {0} on state {1}", reference, state.ToString() );
-			//state.AuxUnRef( (int)PseudoIndice.Registry, reference );
+			Dispose( false );
+		}
+		
+		public void Dispose()
+		{
+			Dispose( true );
+			System.GC.SuppressFinalize( this );
+		}
+		
+		protected virtual void Dispose( bool disposing )
+		{
+			if( reference == (int)References.NoRef )
+				return;
+			
+//			Console.WriteLine( "Disposing a Function ref = {0} state = {1}", reference, state.ToString() );
+//			LuaLib.luaL_unref( state, (int)PseudoIndice.Registry, reference );
+//			reference = (int)References.NoRef;
 		}
 		
 		public object[] Call( params object[] args )

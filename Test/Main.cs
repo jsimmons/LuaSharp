@@ -36,12 +36,6 @@ namespace Test
 {
 	class MainClass
 	{
-		public static void dothings( Lua s )
-		{
-			LuaFunction f1 = s["AFunction"] as LuaFunction;
-			f1.Call();
-		}
-		
 		public static void Main(string[] args)
 		{
 			try
@@ -50,10 +44,22 @@ namespace Test
 				{
 					state.DoFile( "test.lua" );
 					
-					dothings( state );
+					using( LuaFunction f1 = state["AFunction"] as LuaFunction )
+					{
+						//f1.Call();
+					}
 					
-					LuaFunction f2 = state["BFunction"] as LuaFunction;
-					f2.Call();
+					using( LuaFunction f1 = state["BFunction"] as LuaFunction )
+					{
+						//f1.Call();
+					}
+					
+					using( LuaFunction f1 = state["AFunction"] as LuaFunction )
+					{
+						f1.Call();
+					}
+					
+					//Console.WriteLine( state["SillyTable", "aaa"] );
 				}
 			}
 			catch( LuaException e )

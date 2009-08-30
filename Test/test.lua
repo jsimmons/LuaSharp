@@ -2,9 +2,9 @@ SillyTable = {}
 SillyTable.aaa = "bbb"
 
 function AFunction()
-	print( "hello" )
+	print( "Called Function A" )
 end
 
 function BFunction()
-	print( "Hello" )
+	print( "Called Function B" )
 end

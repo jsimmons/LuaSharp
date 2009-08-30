@@ -30,7 +30,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 
 using LuaWrap;
 
@@ -38,35 +37,51 @@ namespace LuaSharp
 {
 	public class Lua : IDisposable
 	{		
-		internal HandleRef state;
+		internal IntPtr state;
 		private CallbackFunction panicFunction;
+		private bool disposed;
 		
 		public Lua()
 		{
-			state = new HandleRef( this, LuaLib.luaL_newstate() );
+			state = LuaLib.luaL_newstate();
 			
-			panicFunction = ( HandleRef s ) => {
-				throw new LuaException( "Error in call to Lua API: " + LuaLib.lua_tostring( s, -1 ) );
+			panicFunction = ( IntPtr s ) => {
+				Console.Error.WriteLine( LuaLib.lua_tostring( s, -1 ) );
+				return 0;
+				//throw new LuaException( "Error in call to Lua API: " + LuaLib.lua_tostring( s, -1 ) );
 			};
 			
-			LuaLib.lua_atpanic( state, panicFunction );
+			//LuaLib.lua_atpanic( state, panicFunction );
+			
+			LuaLib.luaL_openlibs( state );
+			
+			disposed = false;
 		}
 		
 		~Lua()
 		{
-			Cleanup();
+			Dispose( false );
 		}
 		
 		public void Dispose()
 		{
-			Cleanup();
+			Dispose( true );
 			System.GC.SuppressFinalize( this );
 		}
 		
-		private void Cleanup()
+		protected virtual void Dispose( bool disposing )
 		{
-			LuaLib.lua_close( state );
-			state = new HandleRef( this, IntPtr.Zero );
+			if( disposed )
+				return;
+		
+			disposed = true;
+						
+			if( disposing )
+			{
+//				Console.Error.WriteLine( "Disposing Lua state - {0}", state.ToString() );
+//				LuaLib.lua_close( state );
+//				state = IntPtr.Zero;
+			}
 		}
 		
 		public object this[params object[] path]
