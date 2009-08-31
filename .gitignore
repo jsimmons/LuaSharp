@@ -1,0 +1,8 @@
+*~
+*.userprefs
+*.usertasks
+bin/
+*~.*
+*~.*
+*.pidb
+*.swp
