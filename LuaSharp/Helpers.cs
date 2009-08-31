@@ -121,10 +121,10 @@ namespace LuaSharp
 				
 				case LuaType.Table:
 				{
-					throw new NotImplementedException( "Grabbing of tables is not yet handled" );
-					//state.PushValue( index );
-					//int reference = state.AuxRef( (int)PseudoIndice.Registry );
-					//return new LuaTable( reference, interpreter );
+					if( index != -1 )
+						LuaLib.lua_pushvalue( state, index );
+
+					return new LuaTable( state );
 				}
 				
 				case LuaType.Function:

@@ -52,7 +52,21 @@ namespace Test
 					f2.Call();
 					f2.Dispose();
 					
-					Console.WriteLine( state["SillyTable", "aaa"] );
+					LuaFunction print = state["print"] as LuaFunction;										
+					
+					LuaTable sillytable = state["SillyTable"] as LuaTable;
+					
+					string str = sillytable["aaa"] as string;
+										
+					print.Call( str );
+					
+					sillytable["aaa"] = 9001;
+					
+					print.Call( state["SillyTable","aaa"] );
+					
+					sillytable.Dispose();
+					
+					print.Dispose();
 				}
 			}
 			catch( LuaException e )

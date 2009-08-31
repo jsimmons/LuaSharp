@@ -158,14 +158,13 @@ namespace LuaSharp
 		public object GetValue( params object[] path )
 		{
 			if( path == null || path.Length == 0 )
-			{
 				throw new ArgumentNullException( "path" );
-			}
-			else if( path.Length == 1 )
+			
+			if( path.Length == 1 )
 			{
 				Helpers.Push( state, path[0] );
 				LuaLib.lua_gettable( state, (int)PseudoIndex.Globals );
-				return Helpers.Pop( state );
+				return Helpers.Pop( state );				
 			}
 			else
 			{
