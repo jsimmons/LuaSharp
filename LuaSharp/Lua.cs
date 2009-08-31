@@ -46,12 +46,10 @@ namespace LuaSharp
 			state = LuaLib.luaL_newstate();
 			
 			panicFunction = ( IntPtr s ) => {
-				Console.Error.WriteLine( LuaLib.lua_tostring( s, -1 ) );
-				return 0;
-				//throw new LuaException( "Error in call to Lua API: " + LuaLib.lua_tostring( s, -1 ) );
+				throw new LuaException( "Error in call to Lua API: " + LuaLib.lua_tostring( s, -1 ) );
 			};
 			
-			//LuaLib.lua_atpanic( state, panicFunction );
+			LuaLib.lua_atpanic( state, panicFunction );
 			
 			LuaLib.luaL_openlibs( state );
 			
@@ -78,9 +76,8 @@ namespace LuaSharp
 						
 			if( disposing )
 			{
-//				Console.Error.WriteLine( "Disposing Lua state - {0}", state.ToString() );
-//				LuaLib.lua_close( state );
-//				state = IntPtr.Zero;
+				LuaLib.lua_close( state );
+				state = IntPtr.Zero;
 			}
 		}
 		
@@ -120,7 +117,7 @@ namespace LuaSharp
 				Helpers.Push( state, o );
 				
 				// Perform the set.
-				LuaLib.lua_settable( state, (int)PseudoIndice.Globals );
+				LuaLib.lua_settable( state, (int)PseudoIndex.Globals );
 			}
 			else
 			{
@@ -130,7 +127,7 @@ namespace LuaSharp
 			
 				// Need this here else we don't have enough control.
 				Helpers.Push( state, fragments[0] );
-				LuaLib.lua_gettable( state, (int)PseudoIndice.Globals );
+				LuaLib.lua_gettable( state, (int)PseudoIndex.Globals );
 				
 				/// Traverse the main section of the path, leaving the last table on top.
 				Helpers.Traverse( state, fragments );
@@ -167,7 +164,7 @@ namespace LuaSharp
 			else if( path.Length == 1 )
 			{
 				Helpers.Push( state, path[0] );
-				LuaLib.lua_gettable( state, (int)PseudoIndice.Globals );
+				LuaLib.lua_gettable( state, (int)PseudoIndex.Globals );
 				return Helpers.Pop( state );
 			}
 			else
@@ -178,7 +175,7 @@ namespace LuaSharp
 				
 				// Need this here else we don't have enough control.
 				Helpers.Push( state, fragments[0] );
-				LuaLib.lua_gettable( state, (int)PseudoIndice.Globals );
+				LuaLib.lua_gettable( state, (int)PseudoIndex.Globals );
 				
 				// Traverse the main section of the path, leaving the last table on the top.
 				Helpers.Traverse( state, fragments );

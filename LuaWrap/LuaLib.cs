@@ -138,7 +138,7 @@ namespace LuaWrap
 		SetStepMul 		= 7
 	}
  
-	public enum PseudoIndice : int
+	public enum PseudoIndex : int
 	{
 		Registry 		= -10000,
 		Environment 	= -10001,
@@ -318,7 +318,7 @@ namespace LuaWrap
 		/// </param>
 		public static void lua_getglobal( IntPtr state, string name )
 		{
-			lua_getfield( state, (int)PseudoIndice.Globals, name );
+			lua_getfield( state, (int)PseudoIndex.Globals, name );
 		}
 		
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
@@ -835,7 +835,7 @@ namespace LuaWrap
 		/// </param>
 		public static void lua_setglobal( IntPtr state, string name )
 		{
-			lua_setfield( state, (int)PseudoIndice.Globals, name );
+			lua_setfield( state, (int)PseudoIndex.Globals, name );
 		}
  
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]

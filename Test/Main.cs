@@ -44,22 +44,15 @@ namespace Test
 				{
 					state.DoFile( "test.lua" );
 					
-					using( LuaFunction f1 = state["AFunction"] as LuaFunction )
-					{
-						//f1.Call();
-					}
+					LuaFunction f1 = state["AFunction"] as LuaFunction;
+					f1.Call();
+					f1.Dispose();
+				
+					LuaFunction f2 = state["BFunction"] as LuaFunction;
+					f2.Call();
+					f2.Dispose();
 					
-					using( LuaFunction f1 = state["BFunction"] as LuaFunction )
-					{
-						//f1.Call();
-					}
-					
-					using( LuaFunction f1 = state["AFunction"] as LuaFunction )
-					{
-						f1.Call();
-					}
-					
-					//Console.WriteLine( state["SillyTable", "aaa"] );
+					Console.WriteLine( state["SillyTable", "aaa"] );
 				}
 			}
 			catch( LuaException e )

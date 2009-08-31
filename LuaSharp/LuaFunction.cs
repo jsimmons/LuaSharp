@@ -36,35 +36,34 @@ namespace LuaSharp
 		private IntPtr state;
 		internal int reference;
 		
-		public LuaFunction( IntPtr state, int reference )
+		/// <summary>
+		/// Creates a LuaFunction for the object on the top of the stack, and pops it.
+		/// </summary>
+		/// <param name="s">
+		/// A Lua State
+		/// </param>
+		public LuaFunction( IntPtr s )
 		{
-			this.state = state;
-			this.reference = reference;		
-		}
-		
-		~LuaFunction()
-		{
-			Dispose( false );
-		}
+			state = s;
+			reference = LuaLib.luaL_ref( state, (int)PseudoIndex.Registry );
+		}		
 		
 		public void Dispose()
 		{
-			Dispose( true );
-			System.GC.SuppressFinalize( this );
-		}
-		
-		protected virtual void Dispose( bool disposing )
-		{
 			if( reference == (int)References.NoRef )
 				return;
+
+			LuaLib.luaL_unref( state, (int)PseudoIndex.Registry, reference );
+			reference = (int)References.NoRef;
 			
-//			Console.WriteLine( "Disposing a Function ref = {0} state = {1}", reference, state.ToString() );
-//			LuaLib.luaL_unref( state, (int)PseudoIndice.Registry, reference );
-//			reference = (int)References.NoRef;
+			System.GC.SuppressFinalize( this );
 		}
 		
 		public object[] Call( params object[] args )
 		{
+			if( reference == (int)References.NoRef || reference == (int)References.RefNil )
+				throw new InvalidOperationException();
+			
 			int oldTop = LuaLib.lua_gettop( state );
 						
 			if( !LuaLib.lua_checkstack( state, args.Length + 1 ) )
@@ -93,10 +92,7 @@ namespace LuaSharp
 			for( int i = 0; i < returned; i++ )
 			{
 				returnedValues[i] = Helpers.Pop( state );
-			}
-			
-			// Return state to former glory incase something went amiss.
-			LuaLib.lua_settop( state, oldTop );
+			}			
 			
 			return returnedValues;
 		}

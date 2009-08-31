@@ -78,18 +78,22 @@ namespace LuaSharp
 			}
 			else if( t == typeof( LuaFunction ) )
 			{
-				LuaLib.luaL_getref( state, (int)PseudoIndice.Registry, (o as LuaFunction).reference );
+				LuaLib.luaL_getref( state, (int)PseudoIndex.Registry, (o as LuaFunction).reference );
 			}
 			else
 			{
 				throw new NotImplementedException( "Passing of exotic datatypes is not yet handled" );
-			}			
+			}
 		}
 		
 		public static object Pop( IntPtr state )
 		{
 			object o = GetObject( state, -1 );
-			LuaLib.lua_pop( state, 1 );
+			
+			int top = LuaLib.lua_gettop( state );
+			if( top > 0 )
+				LuaLib.lua_pop( state, 1 );
+						
 			return o;
 		}
 		
@@ -117,7 +121,7 @@ namespace LuaSharp
 				
 				case LuaType.Table:
 				{
-					throw new NotImplementedException( "Grabbing of exotic datatypes is not yet handled" );
+					throw new NotImplementedException( "Grabbing of tables is not yet handled" );
 					//state.PushValue( index );
 					//int reference = state.AuxRef( (int)PseudoIndice.Registry );
 					//return new LuaTable( reference, interpreter );
@@ -128,11 +132,8 @@ namespace LuaSharp
 					// If we're not grabbing the function from the top of the stack we want to copy it to the top of the stack.
 					if( index != -1 )
 						LuaLib.lua_pushvalue( state, index );
-				
-					
-				
-					int reference = LuaLib.luaL_ref( state, (int)PseudoIndice.Registry );
-					return new LuaFunction( state, reference );
+
+					return new LuaFunction( state );
 				}
 				
 				case LuaType.Nil:
