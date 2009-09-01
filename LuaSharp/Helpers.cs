@@ -86,17 +86,35 @@ namespace LuaSharp
 			}
 		}
 		
+		/// <summary>
+		/// Pops and returns a value from the top of the stack.
+		/// </summary>
+		/// <param name="state">
+		/// A <see cref="IntPtr"/>
+		/// </param>
+		/// <returns>
+		/// A <see cref="System.Object"/>
+		/// </returns>
 		public static object Pop( IntPtr state )
 		{
-			object o = GetObject( state, -1 );
-			
-			int top = LuaLib.lua_gettop( state );
-			if( top > 0 )
-				LuaLib.lua_pop( state, 1 );
-						
+			object o = GetObject( state, -1 );			
+			LuaLib.lua_pop( state, 1 );
+
 			return o;
 		}
 		
+		/// <summary>
+		/// Returns an object from the given index of the stack, does not remove.
+		/// </summary>
+		/// <param name="state">
+		/// A <see cref="IntPtr"/>
+		/// </param>
+		/// <param name="index">
+		/// A <see cref="System.Int32"/>
+		/// </param>
+		/// <returns>
+		/// A <see cref="System.Object"/>
+		/// </returns>
 		public static object GetObject( IntPtr state, int index )
 		{
 			LuaType type = LuaLib.lua_type( state, index );
@@ -120,19 +138,14 @@ namespace LuaSharp
 				}
 				
 				case LuaType.Table:
-				{
-					if( index != -1 )
-						LuaLib.lua_pushvalue( state, index );
-
+				{					
+					LuaLib.lua_pushvalue( state, index );
 					return new LuaTable( state );
 				}
 				
 				case LuaType.Function:
 				{
-					// If we're not grabbing the function from the top of the stack we want to copy it to the top of the stack.
-					if( index != -1 )
-						LuaLib.lua_pushvalue( state, index );
-
+					LuaLib.lua_pushvalue( state, index );
 					return new LuaFunction( state );
 				}
 				
