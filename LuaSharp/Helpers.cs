@@ -58,7 +58,7 @@ namespace LuaSharp
 				return;
 			}
 			
-			Type t = o.GetType();
+			Type t = o.GetType(  );
 			
 			if( numberTypes.Contains( t ) )
 			{
@@ -66,11 +66,15 @@ namespace LuaSharp
 			}
 			else if( t == typeof( char ) || t == typeof( string ) )
 			{
-				LuaLib.lua_pushstring( state, o.ToString() );
+				LuaLib.lua_pushstring( state, o.ToString(  ) );
 			}
 			else if( t == typeof( bool ) )
 			{
 				LuaLib.lua_pushboolean( state, (bool)o );
+			}
+			else if( t == typeof( LuaTable ) )
+			{
+				LuaLib.luaL_getref( state, (int)PseudoIndex.Registry, (o as LuaTable).reference );
 			}
 			else if( t == typeof( CallbackFunction ) )
 			{

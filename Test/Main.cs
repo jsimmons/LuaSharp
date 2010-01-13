@@ -1,4 +1,4 @@
-// 
+//
 // Main.cs
 //  
 // Author:
@@ -36,37 +36,43 @@ namespace Test
 {
 	class MainClass
 	{
-		public static void Main(string[] args)
+		public static void Main( string[] args )
 		{
 			try
-			{				
-				using( Lua state = new Lua() )
+			{
+				using( Lua state = new Lua(  ) )
 				{
 					state.DoFile( "test.lua" );
 					
 					LuaFunction f1 = state["AFunction"] as LuaFunction;
-					f1.Call();
-					f1.Dispose();
+					
+					state.DoString( "AFunction = nil" );
+					
+					f1.Call(  );
+					f1.Dispose(  );
 				
 					LuaFunction f2 = state["BFunction"] as LuaFunction;
-					f2.Call();
-					f2.Dispose();
+					f2.Call(  );
+					f2.Dispose(  );
 					
-					LuaFunction print = state["print"] as LuaFunction;										
+					LuaFunction print = state["print"] as LuaFunction;
 					
 					LuaTable sillytable = state["SillyTable"] as LuaTable;
 					
 					string str = sillytable["aaa"] as string;
-										
+
 					print.Call( str );
-					
+
 					sillytable["aaa"] = 9001;
 					
-					print.Call( state["SillyTable","aaa"] );
+					print.Call( state["SillyTable", "aaa"] );
 					
-					sillytable.Dispose();
-					
-					print.Dispose();
+					sillytable.Dispose(  );
+
+					state.CreateTable( "table" );
+					print.Call( state["table"] as LuaTable );
+
+					print.Dispose(  );
 				}
 			}
 			catch( LuaException e )

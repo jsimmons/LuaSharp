@@ -164,7 +164,7 @@ namespace LuaSharp
 			{
 				Helpers.Push( state, path[0] );
 				LuaLib.lua_gettable( state, (int)PseudoIndex.Globals );
-				return Helpers.Pop( state );				
+				return Helpers.Pop( state );
 			}
 			else
 			{
@@ -191,6 +191,55 @@ namespace LuaSharp
 				LuaLib.lua_pop( state, -1 );
 				
 				return o;
+			}
+		}
+
+		public void CreateTable( params object[] path )
+		{
+			CreateTable( 0, 0, path );
+		}
+
+		public void CreateTable( int narr, int nrec, params object[] path )
+		{
+			if( path == null || path.Length == 0 )
+			{
+				throw new ArgumentNullException( "path" );
+			}
+			else if( path.Length == 1 )
+			{
+				// Push the key.
+				Helpers.Push( state, path[0] );
+
+				// Push the value.
+				LuaLib.lua_createtable( state, narr, nrec );
+
+				// Perform the set.
+				LuaLib.lua_settable( state, (int)PseudoIndex.Globals );
+			}
+			else
+			{
+				int len = path.Length - 1;
+				object[] fragments = path.Slice( 0, len );
+				object final = path[len];
+
+				// Need this here else we don't have enough control.
+				Helpers.Push( state, fragments[0] );
+				LuaLib.lua_gettable( state, (int)PseudoIndex.Globals );
+
+				// Traverse the main section of the path, leaving the last table on top.
+				Helpers.Traverse( state, fragments );
+
+				// Push the final key.
+				Helpers.Push( state, final );
+
+				// Push the value.
+				LuaLib.lua_createtable( state, narr, nrec );
+
+				// Perform the set.
+				LuaLib.lua_settable( state, -3 );
+
+				// Remove the last table.
+				LuaLib.lua_pop( state, -1 );
 			}
 		}
 		
