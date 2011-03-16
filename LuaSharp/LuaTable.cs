@@ -55,6 +55,7 @@ using System.Collections.Generic;
 
 using LuaWrap;
 using System.Collections;
+using System.Threading;
 
 namespace LuaSharp
 {
@@ -92,11 +93,11 @@ namespace LuaSharp
 		/// </remarks>
 		public void Dispose()
 		{
-			if( reference == (int)References.NoRef )
+			var oldReference = Interlocked.Exchange( ref reference, (int)References.NoRef );
+			if( oldReference == (int)References.NoRef )
 				return;
 
-			LuaLib.luaL_unref( state, (int)PseudoIndex.Registry, reference );
-			reference = (int)References.NoRef;
+			LuaLib.luaL_unref( state, (int)PseudoIndex.Registry, oldReference );
 			
 			System.GC.SuppressFinalize( this );
 		}
@@ -132,7 +133,13 @@ namespace LuaSharp
 		/// Is thrown when an argument passed to a method is invalid because it is <see langword="null" /> .
 		/// </exception>
 		public object GetValue( object key )
-		{		
+		{
+			int reference = this.reference;
+			if( reference == (int)References.NoRef )
+				throw new ObjectDisposedException( GetType().Name );
+			else if( reference == (int)References.RefNil )
+				throw new NullReferenceException();
+			
 			if( key == null )
 				throw new ArgumentNullException( "key" );
 
@@ -157,6 +164,12 @@ namespace LuaSharp
 		/// </exception>
 		public void SetValue( object key, object value )
 		{
+			int reference = this.reference;
+			if( reference == (int)References.NoRef )
+				throw new ObjectDisposedException( GetType().Name );
+			else if( reference == (int)References.RefNil )
+				throw new NullReferenceException();
+			
 			if( key == null )
 				throw new ArgumentNullException( "key" );
 

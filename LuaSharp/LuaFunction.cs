@@ -28,6 +28,7 @@ using System;
 using System.Collections.Generic;
 
 using LuaWrap;
+using System.Threading;
 
 namespace LuaSharp
 {
@@ -37,7 +38,7 @@ namespace LuaSharp
 	public sealed class LuaFunction : IDisposable
 	{
 		private IntPtr state;
-		internal int reference;
+		internal volatile int reference;
 		
 		/// <summary>
 		/// Creates a LuaFunction for the object on the top of the stack, and pops it.
@@ -62,11 +63,11 @@ namespace LuaSharp
 		/// </remarks>
 		public void Dispose()
 		{
-			if( reference == (int)References.NoRef )
+			var oldReference = Interlocked.Exchange( ref reference, (int)References.NoRef );
+			if( oldReference == (int)References.NoRef )
 				return;
 
-			LuaLib.luaL_unref( state, (int)PseudoIndex.Registry, reference );
-			reference = (int)References.NoRef;
+			LuaLib.luaL_unref( state, (int)PseudoIndex.Registry, oldReference );
 			
 			System.GC.SuppressFinalize( this );
 		}
@@ -85,8 +86,11 @@ namespace LuaSharp
 		/// </returns>
 		public object[] Call( params object[] args )
 		{
-			if( reference == (int)References.NoRef || reference == (int)References.RefNil )
-				throw new InvalidOperationException();
+			int reference = this.reference;
+			if( reference == (int)References.NoRef )
+				throw new ObjectDisposedException( GetType().Name );
+			else if( reference == (int)References.RefNil )
+				throw new NullReferenceException();
 			
 			int oldTop = LuaLib.lua_gettop( state );
 						

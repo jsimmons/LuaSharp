@@ -23,8 +23,10 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+
 using System;
 using LuaWrap;
+using System.Threading;
 
 namespace LuaSharp
 {
@@ -34,11 +36,12 @@ namespace LuaSharp
 	/// <remarks>
 	/// It is safe to share functions across <see cref="Lua"/> states.
 	/// </remarks>
-	public abstract class ClrFunction
+	public abstract class ClrFunction : IDisposable
 	{
 		internal CallbackFunction callback;
 		internal static readonly object[] emptyObjects = new object[0];
 		private string name;
+		private volatile int disposed;
 		
 		/// <summary>
 		/// Initializes a new instance of the <see cref="LuaSharp.ClrFunction"/> class.
@@ -47,6 +50,7 @@ namespace LuaSharp
 		{
 			name = GetType().FullName;
 			callback = Invoke;
+			disposed = 0;
 		}
 		
 		/// <summary>
@@ -57,6 +61,12 @@ namespace LuaSharp
 		/// </param>
 		private int Invoke( IntPtr s )
 		{
+			if( disposed == 1 )
+			{
+				Helpers.Throw( s, "Function is disposed: {0}: {1}", name );
+				return 0;
+			}
+			
 			Lua lua;
 			if( !LookupTable<IntPtr, Lua>.Retrieve( s, out lua ) )
 			{
@@ -132,17 +142,56 @@ namespace LuaSharp
 		protected abstract object[] OnInvoke( Lua state, object[] args );
 		
 		/// <summary>
-		/// Gets the name of the function.
+		/// Invokes the <see cref="Dispose(bool)"/> method, guarding against
+		/// repeated disposes.
 		/// </summary>
-		/// <value>
-		/// The name of the function.
-		/// </value>
-		public string Name
+		/// <remarks>
+		/// This can be used to call <see cref="Dispose(bool)"/> from a finalizer
+		/// if one is added to a class that inherits from this one.
+		/// </remarks>
+		protected void InvokeDispose()
 		{
-			get
-			{
-				return name;
-			}
+			var wasDisposed = Interlocked.Exchange( ref disposed, 1 ) == 1;
+			if( wasDisposed )
+				return;
+			
+			Dispose( false );
+		}
+		
+		/// <summary>
+		/// Releases all resource used by the <see cref="LuaSharp.ClrFunction"/> object.
+		/// </summary>
+		/// <remarks>
+		/// Call <see cref="Dispose"/> when you are finished using the <see cref="LuaSharp.ClrFunction"/>. The
+		/// <see cref="Dispose"/> method leaves the <see cref="LuaSharp.ClrFunction"/> in an unusable state. After calling
+		/// <see cref="Dispose"/>, you must release all references to the <see cref="LuaSharp.ClrFunction"/> so the garbage
+		/// collector can reclaim the memory that the <see cref="LuaSharp.ClrFunction"/> was occupying.
+		/// </remarks>
+		public void Dispose ()
+		{
+			var wasDisposed = Interlocked.Exchange( ref disposed, 1 ) == 1;
+			if( wasDisposed )
+				return;
+			
+			callback = null;
+			name = null;
+			
+			Dispose( true );
+			GC.SuppressFinalize( this );
+		}
+		
+		/// <summary>
+		/// Releases all resource used by the <see cref="LuaSharp.ClrFunction"/> object.
+		/// </summary>
+		/// <remarks>
+		/// Call <see cref="Dispose"/> when you are finished using the <see cref="LuaSharp.ClrFunction"/>. The
+		/// <see cref="Dispose"/> method leaves the <see cref="LuaSharp.ClrFunction"/> in an unusable state. After calling
+		/// <see cref="Dispose"/>, you must release all references to the <see cref="LuaSharp.ClrFunction"/> so the garbage
+		/// collector can reclaim the memory that the <see cref="LuaSharp.ClrFunction"/> was occupying.
+		/// </remarks>
+		protected virtual void Dispose( bool disposing )
+		{
+			
 		}
 	}
 }

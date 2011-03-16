@@ -33,6 +33,7 @@ using System.Collections.Generic;
 
 using LuaWrap;
 using System.IO;
+using System.Threading;
 
 namespace LuaSharp
 {
@@ -46,7 +47,7 @@ namespace LuaSharp
 	{		
 		internal IntPtr state;
 		private CallbackFunction panicFunction;
-		private bool disposed;
+		private volatile int disposed;
 		
 		/// <summary>
 		/// Creates a new instance of the <see cref="Lua"/> class.
@@ -65,7 +66,7 @@ namespace LuaSharp
 			
 			LookupTable<IntPtr, Lua>.Store( state, this );
 			
-			disposed = false;
+			disposed = 0;
 		}
 		
 		/// <summary>
@@ -74,6 +75,10 @@ namespace LuaSharp
 		/// </summary>
 		~Lua()
 		{
+			var wasDisposed = Interlocked.Exchange( ref disposed, 1 ) == 1;
+			if( wasDisposed )
+				return;
+			
 			Dispose( false );
 		}
 		
@@ -88,6 +93,10 @@ namespace LuaSharp
 		/// </remarks>
 		public void Dispose()
 		{
+			var wasDisposed = Interlocked.Exchange( ref disposed, 1 ) == 1;
+			if( wasDisposed )
+				return;
+			
 			Dispose( true );
 			System.GC.SuppressFinalize( this );
 		}
@@ -103,10 +112,6 @@ namespace LuaSharp
 		/// </remarks>
 		protected virtual void Dispose( bool disposing )
 		{
-			if( disposed )
-				return;
-			disposed = true;
-						
 			if( disposing )
 			{
 				LookupTable<IntPtr, Lua>.Remove( state );
@@ -144,6 +149,9 @@ namespace LuaSharp
 		/// </param>
 		public void SetValue( object o, params object[] path )
 		{
+			if( disposed == 1 )
+				throw new ObjectDisposedException( GetType().Name );
+			
 			if( path == null || path.Length == 0 )
 			{
 				throw new ArgumentNullException( "path" );
@@ -197,6 +205,9 @@ namespace LuaSharp
 		/// </returns>
 		public object GetValue( params object[] path )
 		{
+			if( disposed == 1 )
+				throw new ObjectDisposedException( GetType().Name );
+			
 			if( path == null || path.Length == 0 )
 			{
 				throw new ArgumentNullException( "path" );
@@ -263,6 +274,9 @@ namespace LuaSharp
 		/// </exception>
 		public LuaTable CreateTable( int initialArrayCapacity, int initialNonArrayCapacity, params object[] path )
 		{
+			if( disposed == 1 )
+				throw new ObjectDisposedException( GetType().Name );
+			
 			if( path == null || path.Length == 0 )
 			{
 				throw new ArgumentNullException( "path" );
@@ -315,6 +329,9 @@ namespace LuaSharp
 		/// </param>
 		public void DoString( string chunk )
 		{
+			if( disposed == 1 )
+				throw new ObjectDisposedException( GetType().Name );
+			
 			if( string.IsNullOrEmpty( chunk ) )
 				throw new ArgumentNullException( "chunk" );
 			
@@ -330,6 +347,9 @@ namespace LuaSharp
 		/// </param>
 		public void DoFile( string filename )
 		{
+			if( disposed == 1 )
+				throw new ObjectDisposedException( GetType().Name );
+			
 			if( string.IsNullOrEmpty( filename ) )
 				throw new ArgumentNullException( "filename" );
 			if( !File.Exists( filename ) )
