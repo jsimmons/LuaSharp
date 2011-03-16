@@ -30,10 +30,10 @@ namespace LuaSharp
 {
 	public static class Extensions
 	{
+		// Stolen - literally: http://dotnetperls.com/array-slice
 	    /// <summary>
 	    /// Get the array slice between the two indexes.
 	    /// Inclusive for start index, exclusive for end index.
-	    /// Stolen - literally: http://dotnetperls.com/array-slice
 	    /// </summary>
 	    public static T[] Slice<T>(this T[] source, int start, int end)
 	    {

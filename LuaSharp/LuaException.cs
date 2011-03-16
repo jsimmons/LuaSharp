@@ -28,12 +28,30 @@ using System;
 
 namespace LuaSharp
 {
-	public class LuaException : Exception
+	/// <summary>
+	/// Represents an exception that occurred because of Lua.
+	/// </summary>
+	public sealed class LuaException : Exception
 	{
+		/// <summary>
+		/// Initializes a new instance of the <see cref="LuaSharp.LuaException"/> class.
+		/// </summary>
+		/// <param name='message'>
+		/// The exception message.
+		/// </param>
 		public LuaException( string message ) : base( message )
 		{
 		}
 		
+		/// <summary>
+		/// Initializes a new instance of the <see cref="LuaSharp.LuaException"/> class.
+		/// </summary>
+		/// <param name='message'>
+		/// The exception message.
+		/// </param>
+		/// <param name='innerException'>
+		/// The cause of the exception.
+		/// </param>
 		public LuaException( string message, Exception innerException ) : base( message, innerException )
 		{		
 		}

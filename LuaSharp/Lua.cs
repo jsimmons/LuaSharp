@@ -32,15 +32,25 @@ using System;
 using System.Collections.Generic;
 
 using LuaWrap;
+using System.IO;
 
 namespace LuaSharp
 {
+	/// <summary>
+	/// Represents a Lua state.
+	/// </summary>
+	/// <remarks>
+	/// A Lua state is akin to an AppDomain in .Net.
+	/// </remarks>
 	public class Lua : IDisposable
 	{		
 		internal IntPtr state;
 		private CallbackFunction panicFunction;
 		private bool disposed;
 		
+		/// <summary>
+		/// Creates a new instance of the <see cref="Lua"/> class.
+		/// </summary>
 		public Lua()
 		{
 			state = LuaLib.luaL_newstate();
@@ -53,34 +63,64 @@ namespace LuaSharp
 			
 			LuaLib.luaL_openlibs( state );
 			
+			LookupTable<IntPtr, Lua>.Store( state, this );
+			
 			disposed = false;
 		}
 		
+		/// <summary>
+		/// Releases unmanaged resources and performs other cleanup operations before the <see cref="LuaSharp.Lua"/> is
+		/// reclaimed by garbage collection.
+		/// </summary>
 		~Lua()
 		{
 			Dispose( false );
 		}
 		
+		/// <summary>
+		/// Releases all resource used by the <see cref="LuaSharp.Lua"/> object.
+		/// </summary>
+		/// <remarks>
+		/// Call <see cref="Dispose"/> when you are finished using the <see cref="LuaSharp.Lua"/>. The <see cref="Dispose"/>
+		/// method leaves the <see cref="LuaSharp.Lua"/> in an unusable state. After calling <see cref="Dispose"/>, you must
+		/// release all references to the <see cref="LuaSharp.Lua"/> so the garbage collector can reclaim the memory that the
+		/// <see cref="LuaSharp.Lua"/> was occupying.
+		/// </remarks>
 		public void Dispose()
 		{
 			Dispose( true );
 			System.GC.SuppressFinalize( this );
 		}
 		
+		/// <summary>
+		/// Releases all resource used by the <see cref="LuaSharp.Lua"/> object.
+		/// </summary>
+		/// <remarks>
+		/// Call <see cref="Dispose"/> when you are finished using the <see cref="LuaSharp.Lua"/>. The <see cref="Dispose"/>
+		/// method leaves the <see cref="LuaSharp.Lua"/> in an unusable state. After calling <see cref="Dispose"/>, you must
+		/// release all references to the <see cref="LuaSharp.Lua"/> so the garbage collector can reclaim the memory that the
+		/// <see cref="LuaSharp.Lua"/> was occupying.
+		/// </remarks>
 		protected virtual void Dispose( bool disposing )
 		{
 			if( disposed )
 				return;
-		
 			disposed = true;
 						
 			if( disposing )
 			{
+				LookupTable<IntPtr, Lua>.Remove( state );
 				LuaLib.lua_close( state );
 				state = IntPtr.Zero;
 			}
 		}
 		
+		/// <summary>
+		/// Gets or sets the a Lua object with the specified path.
+		/// </summary>
+		/// <param name='path'>
+		/// The object path.
+		/// </param>
 		public object this[params object[] path]
 		{
 			get
@@ -97,10 +137,10 @@ namespace LuaSharp
 		/// Sets the object at path defined by fragments to the object o.
 		/// </summary>
 		/// <param name="o">
-		/// A <see cref="System.Object"/>
+		/// A <see cref="System.Object"/> the object to set.
 		/// </param>
-		/// <param name="fragments">
-		/// A <see cref="System.Object[]"/>
+		/// <param name="path">
+		/// A <see cref="System.Object[]"/> containing the path to where the object should be stored.
 		/// </param>
 		public void SetValue( object o, params object[] path )
 		{
@@ -158,9 +198,10 @@ namespace LuaSharp
 		public object GetValue( params object[] path )
 		{
 			if( path == null || path.Length == 0 )
+			{
 				throw new ArgumentNullException( "path" );
-			
-			if( path.Length == 1 )
+			}
+			else if( path.Length == 1 )
 			{
 				Helpers.Push( state, path[0] );
 				LuaLib.lua_gettable( state, (int)PseudoIndex.Globals );
@@ -193,13 +234,34 @@ namespace LuaSharp
 				return o;
 			}
 		}
-
-		public void CreateTable( params object[] path )
+		
+		/// <summary>
+		/// Creates a new table in the state.
+		/// </summary>
+		/// <param name='path'>
+		/// The object path for the table.
+		/// </param>
+		public LuaTable CreateTable( params object[] path )
 		{
-			CreateTable( 0, 0, path );
+			return CreateTable( 0, 0, path );
 		}
-
-		public void CreateTable( int narr, int nrec, params object[] path )
+		
+		/// <summary>
+		/// Creates the table.
+		/// </summary>
+		/// <param name='initialArrayCapacity'>
+		/// The initial capacity for array elements.
+		/// </param>
+		/// <param name='initialNonArrayCapacity'>
+		/// THe initial capacity for non-array elements.
+		/// </param>
+		/// <param name='path'>
+		/// The object path.
+		/// </param>
+		/// <exception cref='ArgumentNullException'>
+		/// Is thrown when an argument passed to a method is invalid because it is <see langword="null" /> .
+		/// </exception>
+		public LuaTable CreateTable( int initialArrayCapacity, int initialNonArrayCapacity, params object[] path )
 		{
 			if( path == null || path.Length == 0 )
 			{
@@ -211,7 +273,7 @@ namespace LuaSharp
 				Helpers.Push( state, path[0] );
 
 				// Push the value.
-				LuaLib.lua_createtable( state, narr, nrec );
+				LuaLib.lua_createtable( state, initialArrayCapacity, initialNonArrayCapacity );
 
 				// Perform the set.
 				LuaLib.lua_settable( state, (int)PseudoIndex.Globals );
@@ -233,7 +295,7 @@ namespace LuaSharp
 				Helpers.Push( state, final );
 
 				// Push the value.
-				LuaLib.lua_createtable( state, narr, nrec );
+				LuaLib.lua_createtable( state, initialArrayCapacity, initialNonArrayCapacity );
 
 				// Perform the set.
 				LuaLib.lua_settable( state, -3 );
@@ -241,16 +303,39 @@ namespace LuaSharp
 				// Remove the last table.
 				LuaLib.lua_pop( state, -1 );
 			}
+			
+			return (LuaTable) GetValue( path );
 		}
 		
+		/// <summary>
+		/// Executes a literal chunk of Lua code.
+		/// </summary>
+		/// <param name="chunk">
+		/// A <see cref="System.String"/> that containes the chunk to execute.
+		/// </param>
 		public void DoString( string chunk )
 		{
+			if( string.IsNullOrEmpty( chunk ) )
+				throw new ArgumentNullException( "chunk" );
+			
 			if( !LuaLib.luaL_dostring( state, chunk ) )
 				throw new LuaException( "Error executing chunk: " + LuaLib.lua_tostring( state, -1 ) );
 		}
 		
+		/// <summary>
+		/// Executes the code contained in a file.
+		/// </summary>
+		/// <param name="filename">
+		/// A <see cref="System.String"/> containing the path to the file.
+		/// </param>
 		public void DoFile( string filename )
 		{
+			if( string.IsNullOrEmpty( filename ) )
+				throw new ArgumentNullException( "filename" );
+			if( !File.Exists( filename ) )
+				throw new ArgumentOutOfRangeException( filename + " does not exist.", new FileNotFoundException( ) );
+			
+			filename = Path.GetFullPath( filename );
 			if( !LuaLib.luaL_dofile( state, filename ) )
 				throw new LuaException( "Error executing file: " + LuaLib.lua_tostring( state, -1 ) );
 		}

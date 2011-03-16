@@ -33,20 +33,36 @@ namespace LuaSharp
 {
 	internal static class Helpers
 	{
-		#region Push Hackery
-		private static List<Type> numberTypes = new List<Type> {
-			typeof( int ),
-			typeof( float ),
-			typeof( decimal ),
-			typeof( double ),
-			typeof( long ),
-			typeof( short ),
-			typeof( byte ),
-			typeof( ushort ),
-			typeof( uint ),
-			typeof( ulong ),
-			typeof( sbyte )
-		};
+		#region Push Hackery with Less Hackery
+		private static readonly HashSet<IntPtr> numberTypes = new HashSet<IntPtr>();
+		private static readonly IntPtr 
+				stringHandle, charHandle,
+				boolHandle,
+				tableHandle,
+				callbackHandle,
+				functionHandle;
+		
+		static Helpers()
+		{
+			numberTypes.Add( typeof( int ).TypeHandle.Value );
+			numberTypes.Add( typeof( float ).TypeHandle.Value );
+			numberTypes.Add( typeof( decimal ).TypeHandle.Value );
+			numberTypes.Add( typeof( double ).TypeHandle.Value );
+			numberTypes.Add( typeof( long ).TypeHandle.Value );
+			numberTypes.Add( typeof( short ).TypeHandle.Value );
+			numberTypes.Add( typeof( byte ).TypeHandle.Value );
+			numberTypes.Add( typeof( ushort ).TypeHandle.Value );
+			numberTypes.Add( typeof( uint ).TypeHandle.Value );
+			numberTypes.Add( typeof( ulong ).TypeHandle.Value );
+			numberTypes.Add( typeof( sbyte ).TypeHandle.Value );
+			
+			stringHandle = typeof( string ).TypeHandle.Value;
+			charHandle = typeof( char ).TypeHandle.Value;
+			boolHandle = typeof( bool ).TypeHandle.Value;
+			tableHandle = typeof( LuaTable ).TypeHandle.Value;
+			callbackHandle = typeof( CallbackFunction ).TypeHandle.Value;
+			functionHandle = typeof( LuaFunction ).TypeHandle.Value;
+		}
 		#endregion
 		
 		public static void Push( IntPtr state, object o )
@@ -58,35 +74,41 @@ namespace LuaSharp
 				return;
 			}
 			
-			Type t = o.GetType(  );
-			
-			if( numberTypes.Contains( t ) )
-			{
-				LuaLib.lua_pushnumber( state, Convert.ToDouble( o ) );
-			}
-			else if( t == typeof( char ) || t == typeof( string ) )
+			var rth = Type.GetTypeHandle( o ).Value;
+			if( rth == charHandle || rth == stringHandle )
 			{
 				LuaLib.lua_pushstring( state, o.ToString(  ) );
 			}
-			else if( t == typeof( bool ) )
+			else if( rth == boolHandle )
 			{
 				LuaLib.lua_pushboolean( state, (bool)o );
 			}
-			else if( t == typeof( LuaTable ) )
+			else if( rth == tableHandle )
 			{
 				LuaLib.luaL_getref( state, (int)PseudoIndex.Registry, (o as LuaTable).reference );
 			}
-			else if( t == typeof( CallbackFunction ) )
+			else if( rth == callbackHandle )
 			{
 				LuaLib.lua_pushcfunction( state, o as CallbackFunction );
 			}
-			else if( t == typeof( LuaFunction ) )
+			else if( rth == functionHandle )
 			{
 				LuaLib.luaL_getref( state, (int)PseudoIndex.Registry, (o as LuaFunction).reference );
 			}
+			else if( o is ClrFunction )
+			{
+				LuaLib.lua_pushcfunction( state, (o as ClrFunction).callback );
+			}
 			else
 			{
-				throw new NotImplementedException( "Passing of exotic datatypes is not yet handled" );
+				if( numberTypes.Contains( rth ) )
+				{
+					LuaLib.lua_pushnumber( state, Convert.ToDouble( o ) );
+				}
+				else
+				{
+					throw new NotImplementedException( "Passing of exotic datatypes is not yet handled" );
+				}
 			}
 		}
 		
@@ -184,6 +206,27 @@ namespace LuaSharp
 				LuaLib.lua_gettable( state, -2 );
 				LuaLib.lua_remove( state, -2 );
 			}
+		}
+		
+		/// <summary>
+		/// Throw the specified message into the specified state as an error.
+		/// </summary>
+		/// <param name='s'>
+		/// The state.
+		/// </param>
+		/// <param name='message'>
+		/// The format arguments.
+		/// </param>
+		public static void Throw( IntPtr s, string message, params object[] args )
+		{
+			if( args != null && args.Length != 0 )
+				Helpers.Push( s, string.Format(message, args) );
+			else
+				Helpers.Push( s, message );
+			
+			LuaLib.luaL_where( s, 1 ); // TODO: not sure if this is working.
+			LuaLib.lua_concat( s, 2 );
+			LuaLib.lua_error( s );
 		}
 	}
 }

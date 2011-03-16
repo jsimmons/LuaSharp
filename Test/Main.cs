@@ -42,20 +42,22 @@ namespace Test
 			{
 				using( Lua state = new Lua(  ) )
 				{
+					LuaFunction print = state["print"] as LuaFunction;
+					
 					state.DoFile( "test.lua" );
+					var f = new Function();
+					state["TestClr"] = f;
 					
 					LuaFunction f1 = state["AFunction"] as LuaFunction;
 					
 					state.DoString( "AFunction = nil" );
 					
-					f1.Call(  );
+					print.Call( "AFunction returned: " + f1.Call(  )[0] );
 					f1.Dispose(  );
 				
 					LuaFunction f2 = state["BFunction"] as LuaFunction;
 					f2.Call(  );
 					f2.Dispose(  );
-					
-					LuaFunction print = state["print"] as LuaFunction;
 					
 					LuaTable sillytable = state["SillyTable"] as LuaTable;
 					
@@ -73,6 +75,7 @@ namespace Test
 					print.Call( state["table"] as LuaTable );
 
 					print.Dispose(  );
+					GC.KeepAlive(f);
 				}
 			}
 			catch( LuaException e )
@@ -80,5 +83,20 @@ namespace Test
 				Console.WriteLine( "Fail: " + e.Message );
 			}
 		}			
+	}
+	
+	class Function : ClrFunction
+	{
+		public Function ()
+		{
+			
+		}
+		
+		protected override object[] OnInvoke ( Lua state, object[] args)
+		{
+			LuaFunction print = state["print"] as LuaFunction;
+			print.Call( string.Format( "CLR function called with: {0}", args[0] ) );
+			return new object[] { "Test" };
+		}
 	}
 }

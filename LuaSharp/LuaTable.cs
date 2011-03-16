@@ -58,7 +58,13 @@ using System.Collections;
 
 namespace LuaSharp
 {
-	public class LuaTable : IDisposable
+	/// <summary>
+	/// Represents a Lua table.
+	/// </summary>
+	/// <exception cref='ArgumentNullException'>
+	/// Is thrown when an argument passed to a method is invalid because it is <see langword="null" /> .
+	/// </exception>
+	public sealed class LuaTable : IDisposable
 	{
 		private IntPtr state;
 		internal int reference;
@@ -69,12 +75,21 @@ namespace LuaSharp
 		/// <param name="s">
 		/// A Lua State
 		/// </param>
-		public LuaTable( IntPtr s )
+		internal LuaTable( IntPtr s )
 		{
 			state = s;
 			reference = LuaLib.luaL_ref( state, (int)PseudoIndex.Registry );
 		}		
 		
+		/// <summary>
+		/// Releases all resource used by the <see cref="LuaSharp.LuaTable"/> object.
+		/// </summary>
+		/// <remarks>
+		/// Call <see cref="Dispose"/> when you are finished using the <see cref="LuaSharp.LuaTable"/>. The
+		/// <see cref="Dispose"/> method leaves the <see cref="LuaSharp.LuaTable"/> in an unusable state. After calling
+		/// <see cref="Dispose"/>, you must release all references to the <see cref="LuaSharp.LuaTable"/> so the garbage
+		/// collector can reclaim the memory that the <see cref="LuaSharp.LuaTable"/> was occupying.
+		/// </remarks>
 		public void Dispose()
 		{
 			if( reference == (int)References.NoRef )
@@ -85,7 +100,13 @@ namespace LuaSharp
 			
 			System.GC.SuppressFinalize( this );
 		}
-
+		
+		/// <summary>
+		/// Gets or sets the Lua object with the specified path.
+		/// </summary>
+		/// <param name='path'>
+		/// The object path.
+		/// </param>
 		public object this[object path]
 		{
 			get
@@ -98,6 +119,18 @@ namespace LuaSharp
 			}
 		}
 		
+		/// <summary>
+		/// Gets a value from the table given a key.
+		/// </summary>
+		/// <returns>
+		/// The value.
+		/// </returns>
+		/// <param name='key'>
+		/// The key.
+		/// </param>
+		/// <exception cref='ArgumentNullException'>
+		/// Is thrown when an argument passed to a method is invalid because it is <see langword="null" /> .
+		/// </exception>
 		public object GetValue( object key )
 		{		
 			if( key == null )
@@ -110,6 +143,18 @@ namespace LuaSharp
 			return Helpers.Pop( state );
 		}
 		
+		/// <summary>
+		/// Sets a value in the table given a key.
+		/// </summary>
+		/// <param name='key'>
+		/// The key.
+		/// </param>
+		/// <param name='value'>
+		/// The value.
+		/// </param>
+		/// <exception cref='ArgumentNullException'>
+		/// Is thrown when an argument passed to a method is invalid because it is <see langword="null" /> .
+		/// </exception>
 		public void SetValue( object key, object value )
 		{
 			if( key == null )

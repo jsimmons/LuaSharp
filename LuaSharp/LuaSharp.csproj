@@ -9,6 +9,7 @@
     <OutputType>Library</OutputType>
     <AssemblyName>LuaSharp</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <RootNamespace>LuaSharp</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -42,6 +43,8 @@
     <Compile Include="Extensions.cs" />
     <Compile Include="LuaFunction.cs" />
     <Compile Include="LuaTable.cs" />
+    <Compile Include="ClrFunction.cs" />
+    <Compile Include="LookupTable.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LuaWrap\LuaWrap.csproj">

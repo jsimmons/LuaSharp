@@ -31,7 +31,10 @@ using LuaWrap;
 
 namespace LuaSharp
 {
-	public class LuaFunction : IDisposable
+	/// <summary>
+	/// Represents a reference to a function inside of a Lua state.
+	/// </summary>
+	public sealed class LuaFunction : IDisposable
 	{
 		private IntPtr state;
 		internal int reference;
@@ -42,12 +45,21 @@ namespace LuaSharp
 		/// <param name="s">
 		/// A Lua State
 		/// </param>
-		public LuaFunction( IntPtr s )
+		internal LuaFunction( IntPtr s )
 		{
 			state = s;
 			reference = LuaLib.luaL_ref( state, (int)PseudoIndex.Registry );
 		}		
 		
+		/// <summary>
+		/// Releases all resource used by the <see cref="LuaSharp.LuaFunction"/> object.
+		/// </summary>
+		/// <remarks>
+		/// Call <see cref="Dispose"/> when you are finished using the <see cref="LuaSharp.LuaFunction"/>. The
+		/// <see cref="Dispose"/> method leaves the <see cref="LuaSharp.LuaFunction"/> in an unusable state. After calling
+		/// <see cref="Dispose"/>, you must release all references to the <see cref="LuaSharp.LuaFunction"/> so the garbage
+		/// collector can reclaim the memory that the <see cref="LuaSharp.LuaFunction"/> was occupying.
+		/// </remarks>
 		public void Dispose()
 		{
 			if( reference == (int)References.NoRef )
@@ -59,6 +71,18 @@ namespace LuaSharp
 			System.GC.SuppressFinalize( this );
 		}
 		
+		/// <summary>
+		/// Call the function with the specified arguments.
+		/// </summary>
+		/// <param name='args'>
+		/// The arguments to pass to the function.
+		/// </param>
+		/// <exception cref='InvalidOperationException'>
+		/// Is thrown when an operation cannot be performed.
+		/// </exception>
+		/// <returns>
+		/// The values passed back from the function as an array.
+		/// </returns>
 		public object[] Call( params object[] args )
 		{
 			if( reference == (int)References.NoRef || reference == (int)References.RefNil )
@@ -69,10 +93,7 @@ namespace LuaSharp
 			if( !LuaLib.lua_checkstack( state, args.Length + 1 ) )
 			{
 				// Doing lua error manually as Mono does not like luaL_error currently.
-				Helpers.Push( state, "Stack overflow calling function: " );
-				LuaLib.luaL_where( state, 1 ); // TODO: not sure if this is working.
-				LuaLib.lua_concat( state, 2 );
-				LuaLib.lua_error( state );
+				Helpers.Throw( state, "Stack overflow calling function: " );
 			}
 			
 			// Push the function.
@@ -88,6 +109,9 @@ namespace LuaSharp
 			
 			// Number of results is the new stack top - starting height of the stack.
 			int returned = LuaLib.lua_gettop( state ) - oldTop;
+			if( returned == 0 )
+				return ClrFunction.emptyObjects;
+			
 			object[] returnedValues = new object[returned];
 			for( int i = 0; i < returned; i++ )
 			{
