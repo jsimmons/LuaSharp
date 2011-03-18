@@ -1,9 +1,9 @@
-SillyTable = {}
-SillyTable.aaa = "bbb"
+SillyTable = { 1, 2, 3, 4 }
+SillyTable.aaa = "Test";
 
 function AFunction()
 	print( "Called Function A" )
-	return TestClr( "Calling CLR Function" );
+	return TestClr( incomingTable["test"] );
 end
 
 function BFunction()

@@ -120,7 +120,7 @@ namespace LuaSharp
 			for( int i = 0; i < returned; i++ )
 			{
 				returnedValues[i] = Helpers.Pop( state );
-			}			
+			}
 			
 			return returnedValues;
 		}

@@ -33,7 +33,6 @@ namespace LuaSharp
 	/// Represents a lookup table for objects.
 	/// </summary>
 	public static class LookupTable<TKey, TValue> 
-		where TKey : struct 
 		where TValue : class
 	{
 		private static Dictionary<TKey, WeakReference> values = new Dictionary<TKey, WeakReference>( );

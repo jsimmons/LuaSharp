@@ -59,7 +59,7 @@ namespace LuaSharp
 		/// <param name='lua'>
 		/// The lua state.
 		/// </param>
-		private int Invoke( IntPtr s )
+		internal virtual int Invoke( IntPtr s )
 		{
 			if( disposed == 1 )
 			{

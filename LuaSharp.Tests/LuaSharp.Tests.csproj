@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="3.5">
+<Project DefaultTargets="Build" ToolsVersion="3.5" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>8.0.50727</ProductVersion>
+    <ProductVersion>9.0.21022</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{132D2EB3-09A7-4189-A630-C3A6137EF210}</ProjectGuid>
-    <OutputType>Exe</OutputType>
-    <AssemblyName>Test</AssemblyName>
+    <ProjectGuid>{2F942D4C-3B6F-4F01-956B-050A4E9349B1}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>LuaSharp.Tests</RootNamespace>
+    <AssemblyName>LuaSharp.Tests</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
-    <RootNamespace>Test</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -19,7 +19,7 @@
     <DefineConstants>DEBUG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Externalconsole>true</Externalconsole>
+    <ConsolePause>false</ConsolePause>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>none</DebugType>
@@ -27,16 +27,17 @@
     <OutputPath>bin\Release</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <ConsolePause>false</ConsolePause>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="System.Core">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
+    <Reference Include="nunit.core, Version=2.4.8.0, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77" />
+    <Reference Include="nunit.framework, Version=2.4.8.0, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Main.cs" />
-    <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="Test.cs" />
+    <Compile Include="Scripts\LuaScripts.cs" />
+    <Compile Include="LuaTest.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
@@ -46,8 +47,17 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="test.lua">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Folder Include="..\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Scripts\TestExecution.lua">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Scripts\TestRemoting2.lua">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Scripts\TestRemoting1.lua">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 </Project>

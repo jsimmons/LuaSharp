@@ -46,6 +46,7 @@
     <Compile Include="LuaTable.cs" />
     <Compile Include="ClrFunction.cs" />
     <Compile Include="LookupTable.cs" />
+    <Compile Include="RemoteFunction.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LuaWrap\LuaWrap.csproj">

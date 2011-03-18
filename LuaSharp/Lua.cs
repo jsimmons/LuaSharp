@@ -34,6 +34,7 @@ using System.Collections.Generic;
 using LuaWrap;
 using System.IO;
 using System.Threading;
+using System.Linq.Expressions;
 
 namespace LuaSharp
 {
@@ -48,6 +49,20 @@ namespace LuaSharp
 		internal IntPtr state;
 		private CallbackFunction panicFunction;
 		private volatile int disposed;
+		
+		/// <summary>
+		/// Gets a value indicating whether this instance is disposed.
+		/// </summary>
+		/// <value>
+		/// <c>true</c> if this instance is disposed; otherwise, <c>false</c>.
+		/// </value>
+		public bool IsDisposed
+		{
+			get
+			{
+				return disposed == 1;
+			}
+		}
 		
 		/// <summary>
 		/// Creates a new instance of the <see cref="Lua"/> class.
@@ -279,7 +294,14 @@ namespace LuaSharp
 			
 			if( path == null || path.Length == 0 )
 			{
-				throw new ArgumentNullException( "path" );
+				//throw new ArgumentOutOfRangeException( "path" );
+				
+				// Push the value.
+				LuaLib.lua_createtable( state, initialArrayCapacity, initialNonArrayCapacity );
+				LuaTable table = (LuaTable) Helpers.GetObject( state, -1 );
+				LuaLib.lua_pop( state, 1 );
+				
+				return table;
 			}
 			else if( path.Length == 1 )
 			{

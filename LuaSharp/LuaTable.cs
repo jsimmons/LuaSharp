@@ -65,7 +65,7 @@ namespace LuaSharp
 	/// <exception cref='ArgumentNullException'>
 	/// Is thrown when an argument passed to a method is invalid because it is <see langword="null" /> .
 	/// </exception>
-	public sealed class LuaTable : IDisposable
+	public sealed class LuaTable : IDisposable, IEnumerable<KeyValuePair<object, object>>
 	{
 		private IntPtr state;
 		internal int reference;
@@ -178,6 +178,86 @@ namespace LuaSharp
 			Helpers.Push( state, key );
 			Helpers.Push( state, value );
 			LuaLib.lua_settable( state, -3 );
+		}
+		
+		#region Cloning
+		internal void CloneToState( IntPtr lua )
+		{
+			var rstate = lua;
+			var lstate = state;
+			
+			Helpers.Push( lstate, this );
+			
+			CloneToState( lstate, rstate );
+			
+			LuaLib.lua_pop( lstate, 1 );
+		}
+		
+		internal static void CloneToState( IntPtr lstate, IntPtr rstate )
+		{
+			int index = LuaLib.lua_gettop( lstate );
+						
+			CloneToState( lstate, rstate, index );
+		}
+		
+		internal static void CloneToState( IntPtr lstate, IntPtr rstate, int index )
+		{
+			LuaLib.lua_newtable( rstate );
+			int top = LuaLib.lua_gettop( rstate );
+						
+			LuaLib.lua_pushnil(lstate);  // first key
+			while (LuaLib.lua_next(lstate, index)) 
+			{
+				// uses 'key' (at index -2) and 'value' (at index -1)
+				object key = Helpers.GetObject( lstate, -2 );
+				object val = Helpers.GetObject( lstate, -1 );
+				
+				// TODO: Rather use direct push/pull - similar to RemoteFunction.
+				
+				if( key is LuaTable )
+					( (LuaTable) key ).CloneToState( rstate );
+				else
+					Helpers.Push( rstate, key );
+				if( val is LuaTable )
+					( (LuaTable) val ).CloneToState( rstate );
+				else
+					Helpers.Push( rstate, val );
+				
+			    // removes 'value'; keeps 'key' for next iteration
+			    LuaLib.lua_pop( lstate, 1 );
+				LuaLib.lua_settable( rstate, top );
+			}
+		}
+		#endregion
+		
+		/// <summary>
+		/// Gets the enumerator.
+		/// </summary>
+		/// <returns>
+		/// The enumerator.
+		/// </returns>
+		public IEnumerator<KeyValuePair<object, object>> GetEnumerator ()
+		{
+			int top =  LuaLib.lua_gettop( state );
+			Helpers.Push( state, this );
+			LuaLib.lua_pushnil( state );  // first key
+			while( LuaLib.lua_next( state, top ) ) 
+			{
+				// uses 'key' (at index -2) and 'value' (at index -1)
+				object key = Helpers.GetObject( state, -2 );
+				object val = Helpers.GetObject( state, -1 );
+				
+				yield return new KeyValuePair<object, object>( key, val );
+				
+			    // removes 'value'; keeps 'key' for next iteration
+			    LuaLib.lua_pop( state, 1 );
+			}
+			LuaLib.lua_pop( state, 1 ); // Pop the table.
+		}
+		
+		IEnumerator System.Collections.IEnumerable.GetEnumerator()
+		{
+			return GetEnumerator();
 		}
 	}
 }

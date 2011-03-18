@@ -28,42 +28,30 @@ using System;
 using System.Collections.Generic;
 
 using LuaWrap;
+using System.Globalization;
 
 namespace LuaSharp
 {
 	internal static class Helpers
 	{
-		#region Push Hackery with Less Hackery
-		private static readonly HashSet<IntPtr> numberTypes = new HashSet<IntPtr>();
-		private static readonly IntPtr 
-				stringHandle, charHandle,
-				boolHandle,
-				tableHandle,
-				callbackHandle,
-				functionHandle;
+		private static readonly Dictionary<RuntimeTypeHandle, Action<IntPtr, object>> pushers;
 		
 		static Helpers()
 		{
-			numberTypes.Add( typeof( int ).TypeHandle.Value );
-			numberTypes.Add( typeof( float ).TypeHandle.Value );
-			numberTypes.Add( typeof( decimal ).TypeHandle.Value );
-			numberTypes.Add( typeof( double ).TypeHandle.Value );
-			numberTypes.Add( typeof( long ).TypeHandle.Value );
-			numberTypes.Add( typeof( short ).TypeHandle.Value );
-			numberTypes.Add( typeof( byte ).TypeHandle.Value );
-			numberTypes.Add( typeof( ushort ).TypeHandle.Value );
-			numberTypes.Add( typeof( uint ).TypeHandle.Value );
-			numberTypes.Add( typeof( ulong ).TypeHandle.Value );
-			numberTypes.Add( typeof( sbyte ).TypeHandle.Value );
+			pushers = new Dictionary<RuntimeTypeHandle, Action<IntPtr, object>>( 3 );
 			
-			stringHandle = typeof( string ).TypeHandle.Value;
-			charHandle = typeof( char ).TypeHandle.Value;
-			boolHandle = typeof( bool ).TypeHandle.Value;
-			tableHandle = typeof( LuaTable ).TypeHandle.Value;
-			callbackHandle = typeof( CallbackFunction ).TypeHandle.Value;
-			functionHandle = typeof( LuaFunction ).TypeHandle.Value;
+			pushers.Add( 
+				typeof( LuaTable ).TypeHandle, (x, y) => 
+				LuaLib.luaL_getref( x, (int)PseudoIndex.Registry, ( (LuaTable) y ).reference ) );
+			
+			pushers.Add( 
+				typeof( CallbackFunction ).TypeHandle, (x, y) => 
+				LuaLib.lua_pushcfunction( x, (CallbackFunction) y ) );
+			
+			pushers.Add( 
+				typeof( LuaFunction ).TypeHandle, (x, y) => 
+				LuaLib.luaL_getref( x, (int)PseudoIndex.Registry, ( (LuaFunction) y ).reference ) );
 		}
-		#endregion
 		
 		public static void Push( IntPtr state, object o )
 		{
@@ -74,36 +62,52 @@ namespace LuaSharp
 				return;
 			}
 			
-			var rth = Type.GetTypeHandle( o ).Value;
-			if( rth == charHandle || rth == stringHandle )
+			// First do a switch lookup. Switch is incredibly fast.
+			IConvertible iConvertible = o as IConvertible;
+			if( iConvertible != null )
 			{
-				LuaLib.lua_pushstring( state, o.ToString(  ) );
+				switch( iConvertible.GetTypeCode() )
+				{
+					case TypeCode.Char:
+					case TypeCode.String:
+						LuaLib.lua_pushstring( state, o.ToString(  ) );
+						return;
+					case TypeCode.Boolean:
+						LuaLib.lua_pushboolean( state, (bool)o );
+						return;
+					case TypeCode.Byte:
+					case TypeCode.SByte:
+					case TypeCode.Decimal:
+					case TypeCode.Single:
+					case TypeCode.Double:
+					case TypeCode.Int16:
+					case TypeCode.Int32:
+					case TypeCode.Int64:
+					case TypeCode.UInt16:
+					case TypeCode.UInt32:
+					case TypeCode.UInt64:
+						LuaLib.lua_pushnumber( state, iConvertible.ToDouble( CultureInfo.InvariantCulture ) );
+						return;
+				}
 			}
-			else if( rth == boolHandle )
+			
+			// Now handle the sealed classes. We can use RuntimeTypeHandle
+			// because of the lack of inheritance.
+			// RTH is fast because it's incredibly easy for the CLR to
+			// lookup in memory.
+			RuntimeTypeHandle rth = Type.GetTypeHandle( o );
+			Action<IntPtr, object> pusher;
+			if( pushers.TryGetValue( rth, out pusher ) )
 			{
-				LuaLib.lua_pushboolean( state, (bool)o );
-			}
-			else if( rth == tableHandle )
-			{
-				LuaLib.luaL_getref( state, (int)PseudoIndex.Registry, (o as LuaTable).reference );
-			}
-			else if( rth == callbackHandle )
-			{
-				LuaLib.lua_pushcfunction( state, o as CallbackFunction );
-			}
-			else if( rth == functionHandle )
-			{
-				LuaLib.luaL_getref( state, (int)PseudoIndex.Registry, (o as LuaFunction).reference );
-			}
-			else if( o is ClrFunction )
-			{
-				LuaLib.lua_pushcfunction( state, (o as ClrFunction).callback );
+				pusher( state, o );
 			}
 			else
 			{
-				if( numberTypes.Contains( rth ) )
+				// Now handle cases where inheritance can happen.
+				ClrFunction clrFunction = o as ClrFunction;
+				if( clrFunction != null )
 				{
-					LuaLib.lua_pushnumber( state, Convert.ToDouble( o ) );
+					LuaLib.lua_pushcfunction( state, clrFunction.callback );
 				}
 				else
 				{

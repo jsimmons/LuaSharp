@@ -40,9 +40,15 @@ namespace Test
 		{
 			try
 			{
+				TestRemoting( );
+					
 				using( Lua state = new Lua(  ) )
 				{
 					LuaFunction print = state["print"] as LuaFunction;
+					
+					LuaTable table = state.CreateTable();
+					table.SetValue( "test", "value" );
+					state["incomingTable"] = table;
 					
 					state.DoFile( "test.lua" );
 					var f = new Function();
@@ -67,6 +73,11 @@ namespace Test
 
 					sillytable["aaa"] = 9001;
 					
+					foreach( var val in sillytable )
+					{
+						Console.WriteLine("{0} = {1}", val.Key, val.Value);
+					}
+					
 					print.Call( state["SillyTable", "aaa"] );
 					
 					sillytable.Dispose(  );
@@ -82,7 +93,48 @@ namespace Test
 			{
 				Console.WriteLine( "Fail: " + e.Message );
 			}
-		}			
+		}
+		
+		private static Lua Lookup( object key )
+		{
+			Lua result;
+			LookupTable<string, Lua>.Retrieve( (string) key, out result );
+			if( result != null && result.IsDisposed )
+				result = null;
+			return result;
+		}
+		
+		private static void TestRemoting( )
+		{
+			RemoteFunction.LookupFunction = MainClass.Lookup;
+				
+			using( var lua2 = new Lua( ) )
+			{
+				using( var lua1 = new Lua( ) )
+				{
+					LookupTable<string, Lua>.Store( "lua1", lua1 );
+					LookupTable<string, Lua>.Store( "lua2", lua2 );
+					
+					lua1["remote"] = RemoteFunction.Instance;
+					lua1.DoString(
+	@"function Test1( a, b )
+		print( a );
+		print( b.a.a );
+		return ""Hello from Lua1 "" .. remote( ""lua2"", ""Test2"", ""a"", ""b"" );
+	end");
+					lua2["remote"] = RemoteFunction.Instance;
+					lua2.DoString(
+	@"
+		function Test2( a, b )
+			print( ""Test2"" .. a .. b );
+			return ""Hello from Lua2 Called In"";
+		end
+
+		print( remote( ""lua1"", ""Test1"", ""a"", { a = { a = ""This is in a nested table."" } } ) );
+	");
+				}
+			}
+		}
 	}
 	
 	class Function : ClrFunction
