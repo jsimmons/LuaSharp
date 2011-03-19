@@ -1092,7 +1092,7 @@ namespace LuaWrap
 			return ( luaL_loadstring( state, chunk ) == LuaEnum.Ok ) && ( lua_pcall( state, 0, (int)LuaEnum.MultiRet, 0 ) == LuaEnum.Ok );
 		}
  
-		//[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
+		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>
 		/// Raises an error. The error message format is given by fmt plus any extra arguments, following the same rules of lua_pushfstring. It also adds at the beginning of the message the file name and the line number where the error occurred, if this information is available. 
 		/// </summary>
@@ -1105,7 +1105,7 @@ namespace LuaWrap
 		/// <param name="__arglist">
 		/// A <see cref="__arglist"/>
 		/// </param>
-		//public static extern void luaL_error( IntPtr state, string format, __arglist );
+		public static extern void luaL_error( IntPtr state, string format, __arglist);
  
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>

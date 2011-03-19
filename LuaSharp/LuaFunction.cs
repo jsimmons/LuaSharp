@@ -93,13 +93,12 @@ namespace LuaSharp
 				throw new NullReferenceException();
 			
 			int oldTop = LuaLib.lua_gettop( state );
-						
+
 			if( !LuaLib.lua_checkstack( state, args.Length + 1 ) )
 			{
-				// Doing lua error manually as Mono does not like luaL_error currently.
-				Helpers.Throw( state, "Stack overflow calling function: " );
+				LuaLib.luaL_error(state, "stack overflow calling function", __arglist());
 			}
-			
+
 			// Push the function.
 			Helpers.Push( state, this );
 			
