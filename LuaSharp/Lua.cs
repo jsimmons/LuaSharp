@@ -381,5 +381,27 @@ namespace LuaSharp
 			if( !LuaLib.luaL_dofile( state, filename ) )
 				throw new LuaException( "Error executing file: " + LuaLib.lua_tostring( state, -1 ) );
 		}
+		
+		/// <summary>
+		/// Sets the path where the Lua state looks for `requires`
+		/// files.
+		/// </summary>
+		/// <remarks>
+		/// Paths should be separated by a semicolon, and contain a single
+		/// question mark `?` where the name of the required library should
+		/// be substituted.
+		/// </remarks>
+		/// <param name='path'>
+		/// The library path.
+		/// </param>
+		public void SetLibraryPath(string path)
+		{
+			LuaLib.lua_pushstring( state, "package" );
+			LuaLib.lua_gettable( state, (int) PseudoIndex.Globals );
+			LuaLib.lua_pushstring( state, "path" );
+			LuaLib.lua_pushstring( state, path );
+			LuaLib.lua_settable( state, -3 );
+			LuaLib.lua_pop( state, 1 );
+		}
 	}
 }
