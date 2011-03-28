@@ -1105,7 +1105,7 @@ namespace LuaWrap
 		/// <param name="__arglist">
 		/// A <see cref="__arglist"/>
 		/// </param>
-		public static extern void luaL_error( IntPtr state, string format, __arglist);
+		public static extern void luaL_error( IntPtr state, string format, IntPtr zero);
  
 		[DllImport( Lib, CallingConvention = CallingConvention.Cdecl )]
 		/// <summary>

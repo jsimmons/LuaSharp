@@ -38,6 +38,7 @@
     <Compile Include="Test.cs" />
     <Compile Include="Scripts\LuaScripts.cs" />
     <Compile Include="LuaTest.cs" />
+    <Compile Include="ClrFunctions.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
@@ -57,6 +58,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="Scripts\TestRemoting1.lua">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Scripts\TestErrors.lua">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

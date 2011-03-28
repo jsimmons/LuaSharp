@@ -148,6 +148,7 @@ namespace Test
 		{
 			LuaFunction print = state["print"] as LuaFunction;
 			print.Call( string.Format( "CLR function called with: {0}", args[0] ) );
+			throw new Exception("Some CLR error.");
 			return new object[] { "Test" };
 		}
 	}

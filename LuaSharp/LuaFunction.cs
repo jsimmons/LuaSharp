@@ -96,7 +96,8 @@ namespace LuaSharp
 
 			if( !LuaLib.lua_checkstack( state, args.Length + 1 ) )
 			{
-				LuaLib.luaL_error(state, "stack overflow calling function", __arglist());
+				Helpers.Throw(state, "stack overflow calling function");
+				
 			}
 
 			// Push the function.

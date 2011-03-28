@@ -27,10 +27,13 @@ using System;
 
 namespace LuaSharp.Tests
 {
-	public class ClrFunctions
+	public class ThrowClrException : ClrFunction
 	{
-		public ClrFunctions ()
+		public static readonly ThrowClrException Instance = new ThrowClrException();
+		
+		protected override object[] OnInvoke (Lua state, object[] args)
 		{
+			throw new Exception( "Throwing CLR exception." );
 		}
 	}
 }

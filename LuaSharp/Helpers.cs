@@ -211,5 +211,22 @@ namespace LuaSharp
 				LuaLib.lua_remove( state, -2 );
 			}
 		}
+		
+				/// <summary>
+		/// Throw the specified message into the specified state as an error.
+		/// </summary>
+		/// <param name='s'>
+		/// The state.
+		/// </param>
+		/// <param name='message'>
+		/// The format arguments.
+		/// </param>
+		public static void Throw( IntPtr s, string message, params object[] args )
+		{
+			if( args != null && args.Length != 0 )
+				message = string.Format( message, args );
+			
+			LuaLib.luaL_error( s, message, IntPtr.Zero );
+		}
 	}
 }

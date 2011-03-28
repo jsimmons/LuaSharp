@@ -32,13 +32,13 @@ namespace LuaSharp.Tests
 	public class Test : LuaTest
 	{
 		[Test()]
-		public void TestExecution ()
+		public void Ensure_That_A_Basic_Script_Runs ()
 		{
 			AssertOutput( LuaScripts.GetScriptString( "TestExecution" ), "Execute", "Executed", "Basic execution." );
 		}
 		
 		[Test()]
-		public void TestRemoting ()
+		public void Ensure_That_Remoting_Works ()
 		{
 			using( Lua remoting1 = new Lua( ) )
 			using( Lua remoting2 = new Lua( ) )
@@ -52,6 +52,43 @@ namespace LuaSharp.Tests
 				remoting2.DoString( LuaScripts.GetScriptString( "TestRemoting2" ) );
 				
 				AssertOutput( remoting2, "Execute", "TestRemoting1: Value 2\nValue 1" );
+			}
+		}
+		
+		[Test()]
+		public void Ensure_That_Lua_Errors_Are_Received ( )
+		{
+			using( Lua err = new Lua( ) )
+			{
+				try
+				{
+					((LuaFunction)err["ExecuteLua"]).Call( );
+					Assert.Fail( "Test Lua Errors: error not received." );
+				}
+				catch
+				{
+					// Assert.Pass
+				}
+			}
+		}
+		
+		[Test()]
+		public void Ensure_That_CLR_Errors_Are_Received ( )
+		{
+			using( Lua err = new Lua( ) )
+			{
+				err["throwClrException"] = ThrowClrException.Instance;
+				err.DoString( LuaScripts.GetScriptString( "TestExecution" ) );
+				
+				try
+				{
+					((LuaFunction)err["ExecuteClr"]).Call( );
+					Assert.Fail( "Test CLR Errors: error not received." );
+				}
+				catch
+				{
+					// Assert.Pass
+				}
 			}
 		}
 	}
