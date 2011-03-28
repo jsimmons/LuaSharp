@@ -63,7 +63,7 @@ namespace LuaSharp
 		{
 			if( disposed == 1 )
 			{
-				Helpers.Throw( s, "Function is disposed: {0}: {1}", name );
+				LuaLib.luaL_error(s, "function '%s' has been disposed", __arglist(name));
 				return 0;
 			}
 			
@@ -100,13 +100,13 @@ namespace LuaSharp
 			}
 			catch (Exception ex)
 			{
-				Helpers.Throw( s, "CLR exception when calling function: {0}: {1}", name, ex.Message );
+				LuaLib.luaL_error(s, "exception calling function '%s' - %s", __arglist(name, ex.Message));
 				return 0;
 			}
 			
 			if( args.Length > 0 && !LuaLib.lua_checkstack( s, args.Length ) )
 			{
-				Helpers.Throw( s, "Not enough space to allocate return values for function: {0}", name );
+				LuaLib.luaL_error(s, "not enough space for return values of function '%s'", __arglist(name));
 				return 0;
 			}
 			
@@ -121,7 +121,7 @@ namespace LuaSharp
 			}
 			catch (Exception ex)
 			{
-				Helpers.Throw( s, "Failed to allocate return value for function: {0},{1}: {2}", name, lastValue, ex.Message );
+				LuaLib.luaL_error(s, "failed to allocate return value for function '%s','%s' - '%s'", __arglist(name, lastValue, ex.Message));
 				return 0;
 			}
 		}
