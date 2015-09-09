@@ -147,7 +147,9 @@ namespace LuaWrap
  
 	/// <summary>
 	/// A delegate for C# function callbacks passed to Lua.
+	/// Instances of this should be anchored in C# so they're not garbage collected when still in use by Lua.
 	/// </summary>
+	[UnmanagedFunctionPointer(System.Runtime.InteropServices.CallingConvention.Cdecl)]
 	public delegate int CallbackFunction( IntPtr state );
  
 	public static class LuaLib
